@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI-Powered Personal Finance Tracker
 
-## Getting Started
+A modern, full-stack application for tracking expenses with integrated AI agents for financial assistance and currency conversion. Built as a hiring task for the Fullstack Developer role.
 
-First, run the development server:
+## 🚀 Overview
 
+This project combines a robust **Next.js** frontend with a high-performance **FastAPI** backend to provide a seamless expense management experience. The core feature is a pair of AI agents capable of performing real actions through tool calling:
+- **Finance Assistant**: Manages your local expense database (queries, additions, summaries).
+- **Currency Converter**: Integrates with an external API for real-time exchange rates.
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 15+ (App Router), Tailwind CSS, Shadcn UI
+- **Backend**: FastAPI (Python 3.10+), SQLAlchemy (Async), SQLite
+- **AI**: OpenRouter API (`google/gemini-3-flash-preview`)
+- **Tools**: `httpx`, `aiosqlite`, `pydantic`
+
+## ⚙️ Setup Instructions
+
+### 1. Prerequisites
+- Node.js (v18+)
+- Python (3.10+)
+- OpenRouter API Key
+
+### 2. Environment Configuration
+Create a `.env` file in the root directory based on `env.example`:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+OPENROUTER_API_KEY=your_key_here
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Backend Setup
+```bash
+# Navigate to the project root
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Install dependencies
+pip install -r backend/requirements.txt
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Seed the database with sample data
+python backend/seed_data.py
 
-## Learn More
+# Start the FastAPI server
+uvicorn backend.main:app --reload
+```
+The API will be available at [http://localhost:8000](http://localhost:8000). You can explore the interactive docs at `/docs`.
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Frontend Setup
+```bash
+# In a new terminal, from the project root
+npm install
+npm run dev
+```
+The application will be running at [http://localhost:3000](http://localhost:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🤖 AI Agents
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Finance Assistant
+Ask questions about your spending or add new expenses naturally:
+- *"How much did I spend on food this month?"*
+- *"Add $50 for groceries today"*
+- *"Summarize my spending in October"*
 
-## Deploy on Vercel
+### Currency Converter
+Get real-time conversions using the integrated tool:
+- *"How much is 100 USD in EUR?"*
+- *"What is a flight for 500 GBP in USD?"*
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📁 Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `backend/`: FastAPI application, agents logic, and database models.
+- `src/`: Next.js frontend source (components, hooks, styles).
+- `public/`: Static assets and project specification documents.
+- `tests/`: Verification scripts and output logs.
+
+---
+*Created by Christian Lux as part of a Fullstack Developer Hiring Task.*
