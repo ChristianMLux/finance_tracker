@@ -4,6 +4,7 @@ import os
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import or_
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
@@ -19,11 +20,18 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-async def get_expenses_tool(db: AsyncSession, category: str = None, date: str = None, end_date: str = None):
+async def get_expenses_tool(db: AsyncSession, category: str = None, search: str = None, date: str = None, end_date: str = None):
     query = select(models.Expense)
     if category:
         query = query.filter(models.Expense.category.ilike(f"%{category}%"))
     
+    if search:
+        query = query.filter(
+            or_(
+                models.Expense.category.ilike(f"%{search}%"),
+                models.Expense.description.ilike(f"%{search}%")
+            )
+        )
     if date:
         try:
             start_date_obj = datetime.strptime(date, "%Y-%m-%d")
@@ -68,6 +76,7 @@ finance_tools = [
                 "type": "object",
                 "properties": {
                     "category": {"type": "string", "description": "Filter by category (e.g. food, transport)"},
+                    "search": {"type": "string", "description": "Search term to match against category or description (e.g. 'Coffee', 'Uber', 'Rent')"},
                     "date": {"type": "string", "description": "Filter by start date (YYYY-MM-DD). If requesting 'last month', this is the 1st of last month."},
                     "end_date": {"type": "string", "description": "Filter by end date (YYYY-MM-DD). If requesting 'last month', this is the last day of last month."}
                 }
@@ -110,6 +119,7 @@ IMPORTANT DATA RULES:
 - When handling date queries like "last month", calculate the exact start (1st) and end (last day) of the previous month relative to today.
 - ALWAYS use both 'date' (start) and 'end_date' when a specific time range is implied.
 - References to 'this month' mean from the 1st of the current month until today.
+- **Search vs Category**: If the user mentions a specific item, brand, or store (e.g., "Coffee", "Netflix", "Walmart"), use the 'search' parameter. Use 'category' for broad groups like "Food" or "Entertainment".
 """
                 msg_history = [{"role": "system", "content": system_prompt}]
                 

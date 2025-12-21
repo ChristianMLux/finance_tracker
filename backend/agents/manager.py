@@ -25,9 +25,10 @@ class ManagerAgent(BaseAgent):
     async def _classify_intent(self, message: str) -> str:
         system_prompt = """Classify the user's intent into one of the following categories:
 - 'finance': Questions about expenses, adding expenses, or financial history (e.g., "How much did I spend?", "Add expense").
-- 'currency': simple currency conversion questions (e.g., "Convert 100 USD to EUR").
-- 'composite': Requests that require getting financial data AND converting it (e.g., "Convert my food costs to EUR", "How much is my travel spending in GBP").
+- 'currency': simple currency conversion questions with specific numeric amounts (e.g., "Convert 100 USD to EUR", "What is 50 GBP in Yen?").
+- 'composite': Requests that involve personal financial data (spendings, costs, history) AND a conversion. This includes queries like "Convert my food costs to EUR", "Total spending on Coffee in RMB", or "How much is my rent in USD?".
 
+CRITICAL: If the user refers to their own "spending", "total", "costs", "expenses", or "history" without providing a specific amount, it MUST be 'composite' or 'finance', NEVER 'currency'.
 Return ONLY the category name.
 """
         try:

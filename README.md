@@ -33,7 +33,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ```bash
 # Navigate to the project root
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv/Scripts/activate
 
 # Install dependencies
 pip install -r backend/requirements.txt
@@ -75,4 +75,4 @@ Get real-time conversions using the integrated tool:
 - `tests/`: Verification scripts and output logs.
 
 ---
-*Created by Christian Lux as part of a Fullstack Developer Hiring Task.*
+
