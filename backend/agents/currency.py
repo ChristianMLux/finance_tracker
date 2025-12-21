@@ -17,7 +17,6 @@ client = AsyncOpenAI(
 )
 
 async def convert_currency_tool(amount: float, from_currency: str, to_currency: str):
-    # Uses https://open.er-api.com/v6/latest/{from_currency}
     try:
         url = f"https://open.er-api.com/v6/latest/{from_currency.upper()}"
         async with httpx.AsyncClient() as client:
@@ -55,10 +54,14 @@ currency_tools = [
 class CurrencyAgent(BaseAgent):
     async def process_message(self, message: str, context=None) -> str:
         try:
-            system_prompt = """You are a helpful currency conversion assistant. 
-Use the available tools to convert currencies. 
-1. If the user asks for an exchange rate without an amount, assume the amount is 1.
-2. ALWAYS include the exchange rate used in your final response (e.g., "Rate: 1.23").
+            system_prompt = """You are a helpful and efficient currency conversion assistant.
+Your goal is to provide quick, accurate conversions in a friendly tone.
+
+GUIDELINES:
+1.  **Format clearly**: "X USD is approximately Y EUR."
+2.  **Include the Rate**: Always mention the exchange rate used (e.g., "Exchange Rate: 1.00 USD = 0.92 EUR").
+3.  **Be Polite**: Use phrases like "Here is the conversion for you" or "At the current rate..."
+4.  **Assumptions**: If no amount is specified, assume 1 unit.
 """
             msg_history = [{"role": "system", "content": system_prompt}]
             

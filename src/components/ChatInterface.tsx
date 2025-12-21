@@ -5,9 +5,16 @@ import { api } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
 import { Input } from "./ui/Input"
 import { Button } from "./ui/Button"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+
+type Message = {
+    role: 'user' | 'agent'
+    content: string
+}
 
 export function ChatInterface() {
-    const [messages, setMessages] = useState<{role: 'user' | 'agent', content: string}[]>([])
+    const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
 
@@ -48,14 +55,46 @@ export function ChatInterface() {
                     )}
                     {messages.map((msg, i) => (
                         <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
-                            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-md ${
+                            <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-md ${
                                 msg.role === 'user' 
                                 ? 'bg-primary text-primary-foreground rounded-br-none' 
                                 : msg.content.startsWith("Error:") 
                                     ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-bl-none' 
                                     : 'bg-muted text-foreground rounded-bl-none'
                             }`}>
-                                {msg.content}
+                                {msg.role === 'agent' ? (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+                                        <ReactMarkdown 
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                                                ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
+                                                ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
+                                                li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                                a: ({node, ...props}) => <a className="text-primary underline underline-offset-4" {...props} />,
+                                                code: ({node, className, children, ...props}) => {
+                                                    const match = /language-(\w+)/.exec(className || '')
+                                                    return !className ? (
+                                                        <code className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded font-mono text-xs" {...props}>
+                                                            {children}
+                                                        </code>
+                                                    ) : (
+                                                        <code className={className} {...props}>
+                                                            {children}
+                                                        </code>
+                                                    )
+                                                },
+                                                table: ({node, ...props}) => <div className="overflow-x-auto my-2"><table className="min-w-full divide-y divide-border" {...props} /></div>,
+                                                th: ({node, ...props}) => <th className="bg-muted px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider" {...props} />,
+                                                td: ({node, ...props}) => <td className="px-3 py-2 whitespace-nowrap text-sm border-t border-border" {...props} />,
+                                            }}
+                                        >
+                                            {msg.content}
+                                        </ReactMarkdown>
+                                    </div>
+                                ) : (
+                                    msg.content
+                                )}
                             </div>
                         </div>
                     ))}

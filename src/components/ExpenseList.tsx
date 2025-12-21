@@ -63,7 +63,7 @@ export function ExpenseList({ expenses }: ExpenseListProps) {
                             placeholder="Search expenses..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="max-w-xs"
+                            className="max-w-xs h-10"
                         />
                         <select 
                             className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
