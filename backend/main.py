@@ -32,5 +32,5 @@ def read_expenses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 
 @app.post("/chat")
 async def chat(message: str):
-    response = await agents.finance_agent.process_message(message)
+    response = await agents.manager_agent.process_message(message)
     return {"response": response}

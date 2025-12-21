@@ -1,12 +1,12 @@
-from fastapi import HTTPException
-import os
-import json
-import requests
-from sqlalchemy.orm import Session
 from datetime import datetime
-from . import models, schemas, database
+import json
+import os
+from sqlalchemy.orm import Session
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
+
+from .. import models, database
+from .base import BaseAgent
 
 load_dotenv()
 
@@ -15,21 +15,31 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-# --- Tools ---
-
-def get_expenses_tool(db: Session, category: str = None, date: str = None):
+def get_expenses_tool(db: Session, category: str = None, date: str = None, end_date: str = None):
     query = db.query(models.Expense)
     if category:
         query = query.filter(models.Expense.category.ilike(f"%{category}%"))
-    # Date filtering is simplified for this demo
+    
     if date:
         try:
-            date_obj = datetime.strptime(date, "%Y-%m-%d")
-            query = query.filter(models.Expense.date >= date_obj)
+            start_date_obj = datetime.strptime(date, "%Y-%m-%d")
+            query = query.filter(models.Expense.date >= start_date_obj)
+        except:
+            pass
+            
+    if end_date:
+        try:
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+            # Set to end of day for inclusive range
+            end_date_obj = end_date_obj.replace(hour=23, minute=59, second=59)
+            query = query.filter(models.Expense.date <= end_date_obj)
         except:
             pass
             
     expenses = query.all()
+    if not expenses:
+        return "No expenses found matching criteria."
+        
     return [f"{e.date.date()} - {e.description or 'Expense'} (${e.amount}) in {e.category}" for e in expenses]
 
 def add_expense_tool(db: Session, amount: float, category: str, description: str = None):
@@ -43,23 +53,7 @@ def add_expense_tool(db: Session, amount: float, category: str, description: str
     db.commit()
     return f"Added expense: ${amount} for {category}"
 
-def convert_currency_tool(amount: float, from_currency: str, to_currency: str):
-    # Mocking external API for demo stability and speed, or use real one
-    # Real implementation would use: https://open.er-api.com/v6/latest/{from_currency}
-    try:
-        url = f"https://open.er-api.com/v6/latest/{from_currency.upper()}"
-        resp = requests.get(url)
-        data = resp.json()
-        rate = data['rates'].get(to_currency.upper())
-        if rate:
-            converted = amount * rate
-            return f"{amount} {from_currency.upper()} is {converted:.2f} {to_currency.upper()} (Rate: {rate})"
-        else:
-            return "Currency not found."
-    except Exception as e:
-        return f"Error converting currency: {str(e)}"
-
-tools = [
+finance_tools = [
     {
         "type": "function",
         "function": {
@@ -69,7 +63,8 @@ tools = [
                 "type": "object",
                 "properties": {
                     "category": {"type": "string", "description": "Filter by category (e.g. food, transport)"},
-                    "date": {"type": "string", "description": "Filter by start date (YYYY-MM-DD)"}
+                    "date": {"type": "string", "description": "Filter by start date (YYYY-MM-DD). If requesting 'last month', this is the 1st of last month."},
+                    "end_date": {"type": "string", "description": "Filter by end date (YYYY-MM-DD). If requesting 'last month', this is the last day of last month."}
                 }
             }
         }
@@ -89,50 +84,41 @@ tools = [
                 "required": ["amount", "category"]
             }
         }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "convert_currency",
-            "description": "Convert an amount from one currency to another.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "amount": {"type": "number"},
-                    "from_currency": {"type": "string", "description": "Source currency code (USD, EUR)"},
-                    "to_currency": {"type": "string", "description": "Target currency code (USD, EUR)"}
-                },
-                "required": ["amount", "from_currency", "to_currency"]
-            }
-        }
     }
 ]
 
-class FinanceAgent:
-    async def process_message(self, message: str):
-        # We need a db session here. For simplicity in this singleton, we open one per request context
-        # In main.py we can pass it, but for now let's create a fresh one or manage it.
-        # Ideally, process_message should accept `db: Session`.
-        # I will update the class structure to rely on injection or local scope used properly.
-        
-        # Let's assume we pass DB session or handle it inside
+class FinanceAgent(BaseAgent):
+    async def process_message(self, message: str, context=None) -> str:
         db = database.SessionLocal()
-        
         try:
-            messages = [{"role": "system", "content": "You are a helpful financial assistant capable of tracking expenses and converting currencies. Use the available tools to answer user requests. Today is " + datetime.now().strftime("%Y-%m-%d")},
-                        {"role": "user", "content": message}]
+            system_prompt = f"""You are a helpful financial assistant capable of tracking expenses. 
+Use the available tools to answer user requests. 
+Today is {datetime.now().strftime("%Y-%m-%d")}.
+
+IMPORTANT: 
+- When handling date queries like "last month", calculate the exact start (1st) and end (last day) of the previous month relative to today.
+- ALWAYS use both 'date' (start) and 'end_date' when a specific time range is implied.
+- references to 'this month' mean from the 1st of the current month until today.
+- If the user asks about a specific category and you find no data in the requested range, mention that explicitly.
+"""
+            msg_history = [{"role": "system", "content": system_prompt}]
+            
+            if context:
+                msg_history.append({"role": "system", "content": f"Context from previous agents: {json.dumps(context)}"})
+                
+            msg_history.append({"role": "user", "content": message})
             
             response = await client.chat.completions.create(
                 model="google/gemini-3-flash-preview", 
-                messages=messages,
-                tools=tools,
+                messages=msg_history,
+                tools=finance_tools,
                 tool_choice="auto"
             )
 
             tool_calls = response.choices[0].message.tool_calls
 
             if tool_calls:
-                messages.append(response.choices[0].message)
+                msg_history.append(response.choices[0].message)
                 
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name
@@ -144,10 +130,8 @@ class FinanceAgent:
                         tool_result = str(get_expenses_tool(db, **function_args))
                     elif function_name == "add_expense":
                         tool_result = add_expense_tool(db, **function_args)
-                    elif function_name == "convert_currency":
-                        tool_result = convert_currency_tool(**function_args)
                     
-                    messages.append({
+                    msg_history.append({
                         "tool_call_id": tool_call.id,
                         "role": "tool",
                         "name": function_name,
@@ -157,16 +141,14 @@ class FinanceAgent:
                 # Get final response
                 second_response = await client.chat.completions.create(
                     model="google/gemini-3-flash-preview",
-                    messages=messages
+                    messages=msg_history
                 )
                 return second_response.choices[0].message.content
             
             return response.choices[0].message.content
 
         except Exception as e:
-            print(f"Agent Logic Error: {e}")
-            return "I apologize, but I encountered an error processing your request."
+            print(f"Finance Agent Logic Error: {e}")
+            return "I apologize, but I encountered an error accessing your financial data."
         finally:
             db.close()
-
-finance_agent = FinanceAgent()
