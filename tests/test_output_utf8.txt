@@ -1,0 +1,74 @@
+Initializing ManagerAgent...
+
+XXX PRE-TEST CLEANUP XXX
+
+>>> TEST 1: Create new expense entries
+User: Add $50 for groceries today
+DEBUG: Intent detected: finance
+Agent: OK. I've added $50 for groceries to your expenses today.
+[PASS] Verified in DB: ID=28, Amount=50.0, Category=groceries, Date=2025-12-21 13:25:34.219070
+
+>>> TEST 2: Query expenses (by date range, category)
+User: How much did I spend on groceries this month?
+DEBUG: Intent detected: finance
+Agent: You have spent a total of **$100.00** on groceries so far this month (from December 1st to December 21st, 2025). 
+
+Here are the items:
+- **Dec 21:** grocery shopping ($50.00)
+- **Dec 21:** groceries today ($50.00)
+
+>>> TEST 3: Query expenses (by amount)
+User: Show me all expenses greater than $40
+DEBUG: Intent detected: finance
+Agent: Here are your expenses greater than $40:
+
+- **2025-12-21**: Bought Pizza ù $123.00 (Food)
+- **2025-12-21**: Grocery shopping ù $50.00 (Groceries)
+- **2025-12-21**: Groceries today ù $50.00 (Groceries)
+- **2025-12-19**: Coffee ù $101.51 (Food)
+- **2025-12-18**: Stationery ù $111.69 (Education)
+- **2025-12-17**: Flight booking ù $98.47 (Travel)
+- **2025-12-16**: Stationery ù $55.30 (Education)
+- **2025-12-13**: Home decor ù $91.67 (Shopping)
+- **2025-12-13**: Car maintenance ù $53.62 (Transport)
+- **2025-12-12**: Pharmacy ù $139.12 (Health)
+- **2025-12-11**: New shirt ù $87.63 (Shopping)
+- **2025-12-10**: Books ù $44.68 (Education)
+- **2025-12-09**: Movie night ù $138.33 (Entertainment)
+- **2025-12-09**: Electric bill ù $118.70 (Utilities)
+- **2025-12-09**: Bus ticket ù $54.25 (Transport)
+- **2025-12-05**: Coffee ù $138.69 (Food)
+- **2025-12-05**: Gifts ù $124.59 (Shopping)
+- **2025-12-03**: Phone bill ù $74.01 (Utilities)
+- **2025-11-27**: Souvenirs ù $84.61 (Travel)
+- **2025-11-27**: Souvenirs ù $72.88 (Travel)
+- **2025-11-26**: Dinner with friends ù $141.43 (Food)
+- **2025-11-26**: New shirt ù $60.56 (Shopping)
+- **2025-11-21**: Online course ù $98.30 (Education)
+
+>>> TEST 4: Provide spending summaries and insights
+User: Summarize my spending habits for this month
+DEBUG: Intent detected: finance
+Agent: For the month of December (so far), you have spent a total of **$1,725.32** across 21 transactions.
+
+Here is the breakdown of your spending habits:
+
+### **Top Spending Categories**
+*   **Food:** **$398.59** (The largest portion of your budget, driven by three expensive coffee/pizza outings).
+*   **Shopping:** **$303.89** (Includes gifts, home decor, and clothing).
+*   **Entertainment:** **$212.74** (Movies and video games).
+*   **Education:** **$211.67** (Stationery and books).
+*   **Utilities:** **$212.97** (Electricity and phone bills).
+
+### **Expense Summary**
+*   **Health:** $139.12 (Pharmacy)
+*   **Transport:** $107.87 (Bus tickets and car maintenance)
+*   **Travel:** $98.47 (Flight booking)
+*   **Groceries:** $100.00 (Two recent entries)
+
+### **Key Observations**
+*   **High Individual Spends:** Your most expensive items this month were a pharmacy visit ($139.12), coffee on Dec 5th ($138.69), and a movie night on Dec 9th ($138.33).
+*   **Food Frequency:** YouÆve had several high-cost food entries (Pizza and Coffee) which are significantly higher than typical grocery spending.
+*   **Holiday Shopping:** "Shopping" and "Gifts" are taking up a significant portion of your mid-month budget.
+
+Would you like a more detailed look at any specific category?

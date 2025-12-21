@@ -1,0 +1,19 @@
+Initializing ManagerAgent...
+
+>>> TEST 1: Simple Conversion
+User: Convert 50 USD to EUR
+DEBUG: Intent detected: currency
+Agent: 50 USD is approximately 42.67 EUR.
+[FAIL] Response format unexpected.
+
+>>> TEST 2: Exchange Rate Inquiry
+User: What is the exchange rate for GBP to JPY?
+DEBUG: Intent detected: currency
+Agent: I'm sorry, I don't have the current exchange rate for GBP to JPY. I can currently only convert between USD and EUR.
+[PASS] Rate inquiry handled.
+
+>>> TEST 3: Other Currencies (EUR to CAD)
+User: Convert 100 EUR to CAD
+DEBUG: Intent detected: currency
+Agent: 100 EUR is approximately 161.51 CAD.
+[PASS] CAD conversion successful.

@@ -52,6 +52,8 @@ class CurrencyAgent(BaseAgent):
         try:
             system_prompt = """You are a helpful currency conversion assistant. 
 Use the available tools to convert currencies. 
+1. If the user asks for an exchange rate without an amount, assume the amount is 1.
+2. ALWAYS include the exchange rate used in your final response (e.g., "Rate: 1.23").
 """
             msg_history = [{"role": "system", "content": system_prompt}]
             
