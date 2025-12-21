@@ -1,13 +1,23 @@
+from contextlib import asynccontextmanager
+import logging
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from .database import engine, Base, get_db
 from . import models, schemas, crud, agents
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Finance Tracker API")
+# Async Database Initialization
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
+    yield
+
+app = FastAPI(title="Finance Tracker API", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -23,12 +33,12 @@ def read_root():
     return {"status": "ok", "message": "Finance Tracker API is running"}
 
 @app.post("/expenses/", response_model=schemas.Expense)
-def create_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
-    return crud.create_expense(db=db, expense=expense)
+async def create_expense(expense: schemas.ExpenseCreate, db: AsyncSession = Depends(get_db)):
+    return await crud.create_expense(db=db, expense=expense)
 
 @app.get("/expenses/", response_model=list[schemas.Expense])
-def read_expenses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_expenses(db, skip=skip, limit=limit)
+async def read_expenses(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    return await crud.get_expenses(db, skip=skip, limit=limit)
 
 @app.post("/chat")
 async def chat(message: str):

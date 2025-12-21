@@ -16,9 +16,12 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
     const [description, setDescription] = useState("")
     const [loading, setLoading] = useState(false)
 
+    const [error, setError] = useState<string | null>(null)
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
+        setError(null)
         try {
             await api.createExpense({
                 amount: parseFloat(amount),
@@ -31,6 +34,7 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
             onExpenseAdded()
         } catch (error) {
             console.error("Failed to add expense", error)
+            setError("Failed to add expense. Please try again.")
         } finally {
             setLoading(false)
         }
@@ -83,6 +87,9 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
             <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Adding..." : "Add Expense"}
             </Button>
+            {error && (
+                <p className="text-xs text-destructive text-center">{error}</p>
+            )}
         </form>
     )
 }

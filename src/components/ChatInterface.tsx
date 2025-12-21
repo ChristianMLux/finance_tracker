@@ -51,7 +51,9 @@ export function ChatInterface() {
                             <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-md ${
                                 msg.role === 'user' 
                                 ? 'bg-primary text-primary-foreground rounded-br-none' 
-                                : 'bg-muted text-foreground rounded-bl-none'
+                                : msg.content.startsWith("Error:") 
+                                    ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-bl-none' 
+                                    : 'bg-muted text-foreground rounded-bl-none'
                             }`}>
                                 {msg.content}
                             </div>

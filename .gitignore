@@ -34,8 +34,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+finance.db
 
 # vercel
 .vercel

@@ -1,10 +1,13 @@
-import requests
+import httpx
 import os
 import json
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
+import logging
 from .base import BaseAgent
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -13,11 +16,12 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-def convert_currency_tool(amount: float, from_currency: str, to_currency: str):
+async def convert_currency_tool(amount: float, from_currency: str, to_currency: str):
     # Uses https://open.er-api.com/v6/latest/{from_currency}
     try:
         url = f"https://open.er-api.com/v6/latest/{from_currency.upper()}"
-        resp = requests.get(url)
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url)
         data = resp.json()
         rate = data['rates'].get(to_currency.upper())
         if rate:
@@ -26,6 +30,7 @@ def convert_currency_tool(amount: float, from_currency: str, to_currency: str):
         else:
             return "Currency not found."
     except Exception as e:
+        logger.error(f"Error converting currency: {e}", exc_info=True)
         return f"Error converting currency: {str(e)}"
 
 currency_tools = [
@@ -81,7 +86,7 @@ Use the available tools to convert currencies.
                     tool_result = ""
                     
                     if function_name == "convert_currency":
-                        tool_result = convert_currency_tool(**function_args)
+                        tool_result = await convert_currency_tool(**function_args)
                     
                     msg_history.append({
                         "tool_call_id": tool_call.id,
@@ -100,5 +105,5 @@ Use the available tools to convert currencies.
             return response.choices[0].message.content
 
         except Exception as e:
-            print(f"Currency Agent Logic Error: {e}")
+            logger.error(f"Currency Agent Logic Error: {e}", exc_info=True)
             return "I apologize, but I encountered an error converting currency."

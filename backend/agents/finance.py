@@ -1,12 +1,16 @@
 from datetime import datetime
 import json
 import os
-from sqlalchemy.orm import Session
+import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from .. import models, database
 from .base import BaseAgent
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -15,8 +19,8 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-def get_expenses_tool(db: Session, category: str = None, date: str = None, end_date: str = None):
-    query = db.query(models.Expense)
+async def get_expenses_tool(db: AsyncSession, category: str = None, date: str = None, end_date: str = None):
+    query = select(models.Expense)
     if category:
         query = query.filter(models.Expense.category.ilike(f"%{category}%"))
     
@@ -24,8 +28,8 @@ def get_expenses_tool(db: Session, category: str = None, date: str = None, end_d
         try:
             start_date_obj = datetime.strptime(date, "%Y-%m-%d")
             query = query.filter(models.Expense.date >= start_date_obj)
-        except:
-            pass
+        except ValueError:
+            logger.warning(f"Invalid start date format: {date}")
             
     if end_date:
         try:
@@ -33,16 +37,17 @@ def get_expenses_tool(db: Session, category: str = None, date: str = None, end_d
             # Set to end of day for inclusive range
             end_date_obj = end_date_obj.replace(hour=23, minute=59, second=59)
             query = query.filter(models.Expense.date <= end_date_obj)
-        except:
-            pass
+        except ValueError:
+            logger.warning(f"Invalid end_date format: {end_date}")
             
-    expenses = query.all()
+    result = await db.execute(query)
+    expenses = result.scalars().all()
     if not expenses:
         return "No expenses found matching criteria."
         
     return [f"{e.date.date()} - {e.description or 'Expense'} (${e.amount}) in {e.category}" for e in expenses]
 
-def add_expense_tool(db: Session, amount: float, category: str, description: str = None):
+async def add_expense_tool(db: AsyncSession, amount: float, category: str, description: str = None):
     expense = models.Expense(
         amount=amount,
         category=category,
@@ -50,7 +55,7 @@ def add_expense_tool(db: Session, amount: float, category: str, description: str
         date=datetime.utcnow()
     )
     db.add(expense)
-    db.commit()
+    await db.commit()
     return f"Added expense: ${amount} for {category}"
 
 finance_tools = [
@@ -89,9 +94,9 @@ finance_tools = [
 
 class FinanceAgent(BaseAgent):
     async def process_message(self, message: str, context=None) -> str:
-        db = database.SessionLocal()
-        try:
-            system_prompt = f"""You are a helpful financial assistant capable of tracking expenses. 
+        async with database.AsyncSessionLocal() as db:
+            try:
+                system_prompt = f"""You are a helpful financial assistant capable of tracking expenses. 
 Use the available tools to answer user requests. 
 Today is {datetime.now().strftime("%Y-%m-%d")}.
 
@@ -101,54 +106,52 @@ IMPORTANT:
 - references to 'this month' mean from the 1st of the current month until today.
 - If the user asks about a specific category and you find no data in the requested range, mention that explicitly.
 """
-            msg_history = [{"role": "system", "content": system_prompt}]
-            
-            if context:
-                msg_history.append({"role": "system", "content": f"Context from previous agents: {json.dumps(context)}"})
+                msg_history = [{"role": "system", "content": system_prompt}]
                 
-            msg_history.append({"role": "user", "content": message})
-            
-            response = await client.chat.completions.create(
-                model="google/gemini-3-flash-preview", 
-                messages=msg_history,
-                tools=finance_tools,
-                tool_choice="auto"
-            )
-
-            tool_calls = response.choices[0].message.tool_calls
-
-            if tool_calls:
-                msg_history.append(response.choices[0].message)
+                if context:
+                    msg_history.append({"role": "system", "content": f"Context from previous agents: {json.dumps(context)}"})
+                    
+                msg_history.append({"role": "user", "content": message})
                 
-                for tool_call in tool_calls:
-                    function_name = tool_call.function.name
-                    function_args = json.loads(tool_call.function.arguments)
-                    
-                    tool_result = ""
-                    
-                    if function_name == "get_expenses":
-                        tool_result = str(get_expenses_tool(db, **function_args))
-                    elif function_name == "add_expense":
-                        tool_result = add_expense_tool(db, **function_args)
-                    
-                    msg_history.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": tool_result,
-                    })
-                
-                # Get final response
-                second_response = await client.chat.completions.create(
-                    model="google/gemini-3-flash-preview",
-                    messages=msg_history
+                response = await client.chat.completions.create(
+                    model="google/gemini-3-flash-preview", 
+                    messages=msg_history,
+                    tools=finance_tools,
+                    tool_choice="auto"
                 )
-                return second_response.choices[0].message.content
-            
-            return response.choices[0].message.content
 
-        except Exception as e:
-            print(f"Finance Agent Logic Error: {e}")
-            return "I apologize, but I encountered an error accessing your financial data."
-        finally:
-            db.close()
+                tool_calls = response.choices[0].message.tool_calls
+
+                if tool_calls:
+                    msg_history.append(response.choices[0].message)
+                    
+                    for tool_call in tool_calls:
+                        function_name = tool_call.function.name
+                        function_args = json.loads(tool_call.function.arguments)
+                        
+                        tool_result = ""
+                        
+                        if function_name == "get_expenses":
+                            tool_result = str(await get_expenses_tool(db, **function_args))
+                        elif function_name == "add_expense":
+                            tool_result = await add_expense_tool(db, **function_args)
+                        
+                        msg_history.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": tool_result,
+                        })
+                    
+                    # Get final response
+                    second_response = await client.chat.completions.create(
+                        model="google/gemini-3-flash-preview",
+                        messages=msg_history
+                    )
+                    return second_response.choices[0].message.content
+                
+                return response.choices[0].message.content
+
+            except Exception as e:
+                logger.error(f"Finance Agent Logic Error: {e}", exc_info=True)
+                return "I apologize, but I encountered an error accessing your financial data."

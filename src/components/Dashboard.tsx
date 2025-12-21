@@ -9,12 +9,16 @@ import { ExpenseList } from "./ExpenseList"
 export function Dashboard() {
     const [expenses, setExpenses] = useState<Expense[]>([])
 
+    const [error, setError] = useState<string | null>(null)
+
     const fetchExpenses = async () => {
         try {
+            setError(null)
             const data = await api.getExpenses()
             setExpenses(data)
         } catch (error) {
             console.error(error)
+            setError("Failed to load expenses. Is backend running?")
         }
     }
 
@@ -35,6 +39,11 @@ export function Dashboard() {
 
     return (
         <div className="space-y-8 animate-fade-in">
+            {error && (
+                <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md border border-destructive/20 text-sm">
+                    ⚠️ {error}
+                </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-3">
                 <Card>

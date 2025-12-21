@@ -4,8 +4,11 @@ from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from .base import BaseAgent
+import logging
 from .finance import FinanceAgent
 from .currency import CurrencyAgent
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -45,7 +48,7 @@ Return ONLY the category name.
 
     async def process_message(self, message: str, context=None) -> str:
         intent = await self._classify_intent(message)
-        print(f"DEBUG: Intent detected: {intent}")
+        logger.info(f"Intent detected: {intent}")
 
         if intent == "finance":
             return await self.finance_agent.process_message(message, context)
