@@ -33,7 +33,7 @@ Return ONLY the category name.
 """
         try:
             response = await client.chat.completions.create(
-                model="google/gemini-3-flash-preview",
+                model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message}

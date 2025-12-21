@@ -71,7 +71,7 @@ GUIDELINES:
             msg_history.append({"role": "user", "content": message})
             
             response = await client.chat.completions.create(
-                model="google/gemini-3-flash-preview", 
+                model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"), 
                 messages=msg_history,
                 tools=currency_tools,
                 tool_choice="auto"
@@ -100,7 +100,7 @@ GUIDELINES:
                 
                 # Get final response
                 second_response = await client.chat.completions.create(
-                    model="google/gemini-3-flash-preview",
+                    model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
                     messages=msg_history
                 )
                 return second_response.choices[0].message.content
