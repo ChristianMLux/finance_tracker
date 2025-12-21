@@ -13,6 +13,10 @@
 # testing
 /coverage
 
+# task
+/public/SOT_FINANCE_TRACKER
+/public/HIRING_TASK_FULLSTACK_DEVELOPER_ChristianLux_TASK_A.txt
+
 # next.js
 /.next/
 /out/
