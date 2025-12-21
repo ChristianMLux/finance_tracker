@@ -4,7 +4,7 @@ import { useState } from "react"
 import { api } from "@/lib/api"
 import { Button } from "./ui/Button"
 import { Input } from "./ui/Input"
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
+ 
 
 interface ExpenseFormProps {
     onExpenseAdded: () => void
@@ -37,35 +37,52 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
     }
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Add Expense</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground ml-1">Amount</label>
+                    <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                        <Input 
+                            placeholder="0.00" 
+                            type="number" 
+                            value={amount} 
+                            onChange={(e) => setAmount(e.target.value)} 
+                            className="pl-7"
+                            required 
+                            step="0.01"
+                        />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground ml-1">Category</label>
                     <Input 
-                        placeholder="Amount" 
-                        type="number" 
-                        value={amount} 
-                        onChange={(e) => setAmount(e.target.value)} 
-                        required 
-                    />
-                    <Input 
-                        placeholder="Category (e.g., Food)" 
+                        placeholder="e.g. Food" 
                         value={category} 
                         onChange={(e) => setCategory(e.target.value)} 
                         required 
+                        list="categories"
                     />
-                    <Input 
-                        placeholder="Description" 
-                        value={description} 
-                        onChange={(e) => setDescription(e.target.value)} 
-                    />
-                    <Button type="submit" disabled={loading}>
-                        {loading ? "Adding..." : "Add Expense"}
-                    </Button>
-                </form>
-            </CardContent>
-        </Card>
+                    <datalist id="categories">
+                        <option value="Food" />
+                        <option value="Transport" />
+                        <option value="Shopping" />
+                        <option value="Bills" />
+                        <option value="Entertainment" />
+                    </datalist>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground ml-1">Description</label>
+                <Input 
+                    placeholder="What did you buy?" 
+                    value={description} 
+                    onChange={(e) => setDescription(e.target.value)} 
+                />
+            </div>
+            <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "Adding..." : "Add Expense"}
+            </Button>
+        </form>
     )
 }
