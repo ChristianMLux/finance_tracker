@@ -126,7 +126,9 @@ IMPORTANT DATA RULES:
                 if context:
                     msg_history.append({"role": "system", "content": f"Context from previous agents: {json.dumps(context)}"})
                     
-                msg_history.append({"role": "user", "content": message})
+                # Security: Truncate and demarcate user input
+                clean_message = message[:1000]
+                msg_history.append({"role": "user", "content": f"<user_input>{clean_message}</user_input>"})
                 
                 response = await client.chat.completions.create(
                     model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"), 

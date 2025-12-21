@@ -44,10 +44,11 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground ml-1">Amount</label>
+                    <label htmlFor="amount" className="text-xs font-medium text-gray-200 ml-1">Amount</label>
                     <div className="relative">
                         <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
                         <Input 
+                            id="amount"
                             placeholder="0.00" 
                             type="number" 
                             value={amount} 
@@ -59,8 +60,9 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground ml-1">Category</label>
+                    <label htmlFor="category" className="text-xs font-medium text-gray-200 ml-1">Category</label>
                     <Input 
+                        id="category"
                         placeholder="e.g. Food" 
                         value={category} 
                         onChange={(e) => setCategory(e.target.value)} 
@@ -77,8 +79,9 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
                 </div>
             </div>
             <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground ml-1">Description</label>
+                <label htmlFor="description" className="text-xs font-medium text-gray-200 ml-1">Description</label>
                 <Input 
+                    id="description"
                     placeholder="What did you buy?" 
                     value={description} 
                     onChange={(e) => setDescription(e.target.value)} 

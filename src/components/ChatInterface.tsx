@@ -115,7 +115,7 @@ export function ChatInterface() {
                             disabled={loading}
                             className="bg-background/80 border-white/10"
                         />
-                        <Button type="submit" disabled={loading} size="icon" className="w-12 shrink-0">
+                        <Button type="submit" disabled={loading} size="icon" className="w-12 shrink-0" aria-label="Send message">
                             ➤
                         </Button>
                     </form>
