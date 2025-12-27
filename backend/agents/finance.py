@@ -102,7 +102,7 @@ finance_tools = [
 ]
 
 class FinanceAgent(BaseAgent):
-    async def process_message(self, message: str, context=None) -> str:
+    async def process_message(self, message: str, context=None, status_callback=None) -> str:
         async with database.AsyncSessionLocal() as db:
             try:
                 system_prompt = f"""You are a friendly and insightful Financial Assistant aimed at helping users manage their money better.
@@ -130,6 +130,9 @@ IMPORTANT DATA RULES:
                 clean_message = message[:1000]
                 msg_history.append({"role": "user", "content": f"<user_input>{clean_message}</user_input>"})
                 
+                if status_callback:
+                    await status_callback("log", "Finance Agent: Analyzing request...")
+                
                 response = await client.chat.completions.create(
                     model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"), 
                     messages=msg_history,
@@ -145,6 +148,9 @@ IMPORTANT DATA RULES:
                     for tool_call in tool_calls:
                         function_name = tool_call.function.name
                         function_args = json.loads(tool_call.function.arguments)
+                        
+                        if status_callback:
+                            await status_callback("log", f"Finance Agent: Executing tool '{function_name}'...")
                         
                         tool_result = ""
                         

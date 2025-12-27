@@ -28,7 +28,7 @@ class ManagerAgent(BaseAgent):
         self.architect_agent = ArchitectAgent()
         self.auditor_agent = AuditorAgent()
 
-    async def _classify_intent(self, message: str) -> str:
+    async def _classify_intent(self, message: str, status_callback=None) -> str:
         system_prompt = """Classify the user's intent into one of the following categories:
 - 'finance': Questions about expenses, adding expenses, or financial history (e.g., "How much did I spend?", "Add expense").
 - 'currency': simple currency conversion questions with specific numeric amounts (e.g., "Convert 100 USD to EUR", "What is 50 GBP in Yen?").
@@ -56,7 +56,7 @@ Return ONLY the category name.
         except:
             return "finance"
 
-    async def _safety_check(self, message: str) -> bool:
+    async def _safety_check(self, message: str, status_callback=None) -> bool:
         """
         Ensures the user query is:
         1. Related to finance/math/economics.
@@ -84,6 +84,8 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             )
             content = response.choices[0].message.content.strip().upper()
             is_safe = "SAFE" in content
+            if status_callback:
+                await status_callback("log", f"Safety Check Result: {content}")
             logger.info(f"Safety Check: {message} -> {content} ({is_safe})")
             return is_safe
         except Exception as e:
@@ -94,31 +96,46 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             # Let's stick to True but log.
             return True
 
-    async def process_message(self, message: str, context=None) -> str:
+    async def process_message(self, message: str, context=None, status_callback=None) -> str:
+        if status_callback:
+            await status_callback("log", "Starting Manager Agent processing...")
+        
         # GLOBAL SAFETY CHECK
-        is_safe = await self._safety_check(message)
+        if status_callback:
+            await status_callback("log", "Running Safety Check...")
+        is_safe = await self._safety_check(message, status_callback)
         if not is_safe:
             logger.warning(f"Safety check rejected: {message}")
             return "I cannot fulfill this request. I am a Financial Assistant, and this query seems unrelated to finance or potentially unsafe."
 
-        intent = await self._classify_intent(message)
+        if status_callback:
+            await status_callback("log", "Classifying Intent...")
+        intent = await self._classify_intent(message, status_callback)
         logger.info(f"Intent detected: {intent}")
 
         if intent == "finance":
-            return await self.finance_agent.process_message(message, context)
+            if status_callback:
+                await status_callback("log", "Routing to Finance Agent")
+            return await self.finance_agent.process_message(message, context, status_callback)
         
         elif intent == "currency":
-            return await self.currency_agent.process_message(message, context)
+            if status_callback:
+                await status_callback("log", "Routing to Currency Agent")
+            return await self.currency_agent.process_message(message, context, status_callback)
         
         elif intent == "composite":
-            finance_response = await self.finance_agent.process_message(message)
+            if status_callback:
+                await status_callback("log", "Processing Composite Request (Finance + Currency)")
+            finance_response = await self.finance_agent.process_message(message, status_callback=status_callback)
             
             currency_prompt = f"The user wants: '{message}'. \nHere is the financial data found: {finance_response}\n\nPlease perform the conversion requested."
             
-            return await self.currency_agent.process_message(currency_prompt, context={"finance_data": finance_response})
+            return await self.currency_agent.process_message(currency_prompt, context={"finance_data": finance_response}, status_callback=status_callback)
 
         elif intent == "new_tool":
             logger.info("New tool needed. Triggering Architect...")
+            if status_callback:
+                await status_callback("log", "Intent: New Tool Creation. Triggering Architect...")
             # 1. Generate
             tool_data = await self.architect_agent.generate_tool(message)
             if "error" in tool_data:
@@ -126,6 +143,8 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             
             # 2. Audit
             logger.info(f"Auditing tool: {tool_data.get('name')}")
+            if status_callback:
+                await status_callback("log", f"Auditing tool: {tool_data.get('name')}")
             is_valid = await self.auditor_agent.validate_tool(tool_data)
             
             if not is_valid:
@@ -136,6 +155,8 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
                 # Check if exists?
                 existing = await crud.get_tool_by_name(db, tool_data["name"])
                 if not existing:
+                    if status_callback:
+                        await status_callback("log", "Saving new tool to database...")
                     # Serialize schema for DB
                     db_tool_data = tool_data.copy()
                     if isinstance(db_tool_data.get("json_schema"), dict):
@@ -164,6 +185,9 @@ Return ONLY JSON.
             )
             args = json.loads(extraction.choices[0].message.content)
             
+            if status_callback:
+                await status_callback("log", f"Executing tool {tool_data['name']} with args: {args}")
+            
             # Re-verify/Execute using Auditor's sandbox? 
             # We can reuse the sandbox logic. Auditor has it.
             # Let's add an 'execute_tool' method to Auditor for simplicity or use the one we put in mcp_server logic.
@@ -190,7 +214,35 @@ print(json.dumps(run(**args)))
                     if res.error:
                         return f"Tool execution failed: {res.error.value}"
                     
-                    raw_result = res.logs.stdout
+                    # Split stdout to separate logs from final JSON result
+                    # The wrapper prints json.dumps(result) as the LAST line.
+                    stdout = res.logs.stdout
+                    
+                    if stdout is None:
+                        stdout = ""
+                    elif isinstance(stdout, list):
+                        # Should not happen in recent e2b versions but handled just in case
+                        stdout = "\n".join([str(line) for line in stdout])
+                    else:
+                        stdout = str(stdout)
+
+                    try:
+                        output_lines = stdout.strip().split('\n')
+                    except Exception as e:
+                         if status_callback:
+                             await status_callback("error", f"Error parsing output: {e}")
+                         output_lines = []
+                    
+                    if not output_lines or not output_lines[0].strip():
+                         return "Tool executed but returned no output."
+                        
+                    raw_result = output_lines[-1]
+                    
+                    # Log intermediate steps
+                    for log_line in output_lines[:-1]:
+                        if log_line.strip() and status_callback:
+                            await status_callback("log", f"Tool: {log_line}")
+                            
                     # POST-PROCESSING: Make it conversational
                     explanation_prompt = f"""
 The user asked: "{message}"
@@ -204,6 +256,11 @@ Please answer the user's question using this result. Be helpful, professional, a
                     )
                     return final_response.choices[0].message.content
             except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                logger.error(f"Execution error traceback: {tb}")
+                if status_callback:
+                    await status_callback("error", f"Traceback: {tb}")
                 return f"Execution error: {e}"
             
         return "I'm not sure how to help with that."

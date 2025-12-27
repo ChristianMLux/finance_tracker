@@ -24,11 +24,13 @@ Requirements:
    - "python_code": the full python code string. The function should be named 'run'.
    - "json_schema": the JSON schema for the arguments of the function.
 
+4. IMPORTANT: Include `print()` statements to log the steps of your calculation. These will be shown to the user as real-time feedback. DO NOT print the final result, only intermediate steps. The wrapper handles the final result.
+
 Example Output:
 {
   "name": "calculate_roi",
   "description": "Calculates Return on Investment",
-  "python_code": "def run(revenue: float, cost: float) -> float:\n    return ((revenue - cost) / cost) * 100",
+  "python_code": "def run(revenue: float, cost: float) -> float:\n    print(f'Calculating ROI for revenue {revenue} and cost {cost}')\n    return ((revenue - cost) / cost) * 100",
   "json_schema": {
     "type": "object",
     "properties": {
@@ -53,6 +55,6 @@ Example Output:
         except Exception as e:
             return {"error": str(e)}
 
-    async def process_message(self, message: str, context=None) -> str:
+    async def process_message(self, message: str, context=None, status_callback=None) -> str:
         # Not used primarily for chat, but for specific generation
         return "I am the Architect. I build tools."

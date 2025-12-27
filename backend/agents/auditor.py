@@ -37,5 +37,5 @@ class AuditorAgent(BaseAgent):
             logger.error(f"Sandbox execution failed: {e}")
             return False
 
-    async def process_message(self, message: str, context=None) -> str:
+    async def process_message(self, message: str, context=None, status_callback=None) -> str:
         return "I verify code."

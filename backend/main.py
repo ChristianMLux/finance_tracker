@@ -40,7 +40,40 @@ async def create_expense(expense: schemas.ExpenseCreate, db: AsyncSession = Depe
 async def read_expenses(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     return await crud.get_expenses(db, skip=skip, limit=limit)
 
+import asyncio
+import json
+from fastapi.responses import StreamingResponse
+
+# ... imports ...
+
 @app.post("/chat")
 async def chat(message: str):
-    response = await agents.manager_agent.process_message(message)
-    return {"response": response}
+    queue = asyncio.Queue()
+    
+    async def callback(log_type, content):
+        # Format as NDJSON line
+        data = json.dumps({"type": log_type, "content": content})
+        await queue.put(data + "\n")
+
+    async def background_worker():
+        try:
+            response = await agents.manager_agent.process_message(message, status_callback=callback)
+            # Final response
+            await queue.put(json.dumps({"type": "response", "content": response}) + "\n")
+        except Exception as e:
+            logger.error(f"Error processing message: {e}", exc_info=True)
+            await queue.put(json.dumps({"type": "error", "content": "Internal processing error."}) + "\n")
+        finally:
+            await queue.put(None) # Sentinel to stop stream
+
+    # Start the agent in background
+    asyncio.create_task(background_worker())
+
+    async def stream_generator():
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield item
+    
+    return StreamingResponse(stream_generator(), media_type="application/x-ndjson")

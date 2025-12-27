@@ -52,7 +52,7 @@ currency_tools = [
 ]
 
 class CurrencyAgent(BaseAgent):
-    async def process_message(self, message: str, context=None) -> str:
+    async def process_message(self, message: str, context=None, status_callback=None) -> str:
         try:
             system_prompt = """You are a helpful and efficient currency conversion assistant.
 Your goal is to provide quick, accurate conversions in a friendly tone.

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { api } from "@/lib/api"
+import { api, API_URL } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
 import { Input } from "./ui/Input"
 import { Button } from "./ui/Button"
@@ -17,6 +17,7 @@ export function ChatInterface() {
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
+    const [statusLog, setStatusLog] = useState<string>("")
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -26,14 +27,51 @@ export function ChatInterface() {
         setMessages(prev => [...prev, { role: 'user', content: userMessage }])
         setInput("")
         setLoading(true)
+        setStatusLog("Starting...")
 
         try {
-            const response = await api.chat(userMessage)
-            setMessages(prev => [...prev, { role: 'agent', content: response }])
+            const res = await fetch(`${API_URL}/chat?message=${encodeURIComponent(userMessage)}`, {
+                method: 'POST',
+            })
+            
+            if (!res.ok) throw new Error('Failed to send message')
+            
+            const reader = res.body?.getReader()
+            if (!reader) throw new Error('No reader available')
+
+            const decoder = new TextDecoder()
+            let buffer = ""
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split('\n')
+                buffer = lines.pop() || ""
+
+                for (const line of lines) {
+                    if (!line.trim()) continue
+                    try {
+                        const data = JSON.parse(line)
+                        if (data.type === 'log') {
+                            setStatusLog(data.content)
+                        } else if (data.type === 'response') {
+                            setMessages(prev => [...prev, { role: 'agent', content: data.content }])
+                        } else if (data.type === 'error') {
+                            setMessages(prev => [...prev, { role: 'agent', content: `Error: ${data.content}` }])
+                        }
+                    } catch (e) {
+                        console.error("Error parsing NDJSON:", e)
+                    }
+                }
+            }
+
         } catch (error) {
             setMessages(prev => [...prev, { role: 'agent', content: "Error: Failed to get response." }])
         } finally {
             setLoading(false)
+            setStatusLog("")
         }
     }
 
@@ -101,7 +139,7 @@ export function ChatInterface() {
                     {loading && (
                         <div className="flex justify-start animate-pulse">
                             <div className="bg-muted rounded-2xl px-4 py-3 text-sm rounded-bl-none">
-                                Thinking...
+                                {statusLog || "Thinking..."}
                             </div>
                         </div>
                     )}
