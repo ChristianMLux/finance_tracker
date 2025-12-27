@@ -1,0 +1,21 @@
+services:
+  mcp-server:
+    build:
+      context: ../../
+      dockerfile: infra/mcp/Dockerfile
+    container_name: finance_mcp_server
+    volumes:
+      # Mount backend for hot-reloading (if configured) or access to local DB
+      - ../../backend:/app/backend
+      - ../../finance.db:/app/finance.db
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:////app/finance.db
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - E2B_API_KEY=${E2B_API_KEY}
+    working_dir: /app
+    # If standard FastMCP runs stdio, docker logs will capture it. 
+    # If we want SSE, we might need:
+    # command: python backend/mcp_server.py --transport sse --port 8000 (conceptual)
+    command: python backend/mcp_server.py
+    stdin_open: true # tty for stdio interaction if needed
+    tty: true

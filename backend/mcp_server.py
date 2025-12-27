@@ -107,16 +107,16 @@ async def register_tools_from_db():
             )
 
 if __name__ == "__main__":
-    # Run the registration loop?
-    # Since we can't easily await in __main__ before mcp.run() (unless mcp.run is async?), 
-    # we might need to trick it or use lifespan.
-    # mcp.run() blocks.
-    
-    # Workaround: Just manually run the registration sync-ish or wrap in startup?
-    # FastMCP doesn't seem to have 'on_startup'.
-    
-    # We will just fetch them synchronously (or via run_until_complete) before starting.
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(register_tools_from_db())
-    
+    # Initialize the database tools
+    # We use a run_until_complete to ensure they are registered before the server starts receiving requests
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(register_tools_from_db())
+    except Exception as e:
+        logger.error(f"Failed to register tools on startup: {e}")
+
+    # Standard execution (Stdio)
+    # To run with SSE, you would typically use an ASGI wrapper or the 'mcp' CLI tools.
+    # For example: uvicorn backend.mcp_server:mcp.asgi_app
     mcp.run()
