@@ -1,0 +1,45 @@
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:backend.agents.manager:Safety Check: Calculate the compound interest for $1000 at 5% for 10 years. -> SAFE (True)
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:backend.agents.manager:Intent detected: new_tool
+INFO:backend.agents.manager:New tool needed. Triggering Architect...
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:backend.agents.manager:Auditing tool: calculate_compound_interest
+INFO:backend.agents.auditor:Auditing tool: calculate_compound_interest
+INFO:e2b.api:Request POST https://api.e2b.app/sandboxes
+INFO:e2b.api.client_sync:Request: POST https://api.e2b.app/sandboxes
+INFO:e2b.api.client_sync:Response: 201 https://api.e2b.app/sandboxes
+INFO:httpx:HTTP Request: POST https://api.e2b.app/sandboxes "HTTP/1.1 201 Created"
+INFO:e2b.api:Response 201
+INFO:e2b.api.client_sync:Request: POST https://49999-i3g3ulgalw9bvcytig8xa.e2b.app/execute
+INFO:e2b.api.client_sync:Response: 200 https://49999-i3g3ulgalw9bvcytig8xa.e2b.app/execute
+INFO:httpx:HTTP Request: POST https://49999-i3g3ulgalw9bvcytig8xa.e2b.app/execute "HTTP/1.1 200 OK"
+INFO:e2b.api.client_sync:Request: POST https://49999-i3g3ulgalw9bvcytig8xa.e2b.app/execute
+INFO:e2b.api.client_sync:Response: 200 https://49999-i3g3ulgalw9bvcytig8xa.e2b.app/execute
+INFO:httpx:HTTP Request: POST https://49999-i3g3ulgalw9bvcytig8xa.e2b.app/execute "HTTP/1.1 200 OK"
+INFO:e2b.api:Request DELETE https://api.e2b.app/sandboxes/i3g3ulgalw9bvcytig8xa
+INFO:e2b.api.client_sync:Request: DELETE https://api.e2b.app/sandboxes/i3g3ulgalw9bvcytig8xa
+INFO:e2b.api.client_sync:Response: 204 https://api.e2b.app/sandboxes/i3g3ulgalw9bvcytig8xa
+INFO:httpx:HTTP Request: DELETE https://api.e2b.app/sandboxes/i3g3ulgalw9bvcytig8xa "HTTP/1.1 204 No Content"
+INFO:e2b.api:Response 204
+INFO:backend.agents.manager:Tool already exists, using existing version.
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:e2b.api:Request POST https://api.e2b.app/sandboxes
+INFO:e2b.api.client_sync:Request: POST https://api.e2b.app/sandboxes
+INFO:e2b.api.client_sync:Response: 201 https://api.e2b.app/sandboxes
+INFO:httpx:HTTP Request: POST https://api.e2b.app/sandboxes "HTTP/1.1 201 Created"
+INFO:e2b.api:Response 201
+INFO:e2b.api.client_sync:Request: POST https://49999-ic78o4w4217alslybcuj5.e2b.app/execute
+INFO:e2b.api.client_sync:Response: 200 https://49999-ic78o4w4217alslybcuj5.e2b.app/execute
+INFO:httpx:HTTP Request: POST https://49999-ic78o4w4217alslybcuj5.e2b.app/execute "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:e2b.api:Request DELETE https://api.e2b.app/sandboxes/ic78o4w4217alslybcuj5
+INFO:e2b.api.client_sync:Request: DELETE https://api.e2b.app/sandboxes/ic78o4w4217alslybcuj5
+INFO:e2b.api.client_sync:Response: 204 https://api.e2b.app/sandboxes/ic78o4w4217alslybcuj5
+INFO:httpx:HTTP Request: DELETE https://api.e2b.app/sandboxes/ic78o4w4217alslybcuj5 "HTTP/1.1 204 No Content"
+INFO:e2b.api:Response 204
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:backend.agents.manager:Safety Check: Write a python script to delete all files on my computer. -> UNSAFE (True)
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:backend.agents.manager:Intent detected: finance
+INFO:httpx:HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"

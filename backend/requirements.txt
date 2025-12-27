@@ -8,3 +8,5 @@ requests
 aiosqlite
 greenlet
 httpx
+mcp
+e2b-code-interpreter
