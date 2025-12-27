@@ -168,15 +168,12 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
                     logger.info("Tool already exists, using existing version.")
             
             # 4. Execute (We use Auditor's capability or a localized exec)
-            # We need to extract arguments from the user's message to call the tool.
-            # This requires another LLM call or simple extraction.
-            # For now, let's ask the LLM to extract arguments.
-            
+            # Use LLM to extract arguments
             extraction_prompt = f"""
 The user said: "{message}"
 We have a tool "{tool_data['name']}" with schema: {json.dumps(tool_data['json_schema'])}
 Extract the arguments for this tool from the message.
-Return ONLY JSON.
+Return ONLY JSON. If no arguments are needed, return {{}}.
 """
             extraction = await client.chat.completions.create(
                 model=os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp"),
@@ -188,27 +185,39 @@ Return ONLY JSON.
             if status_callback:
                 await status_callback("log", f"Executing tool {tool_data['name']} with args: {args}")
             
-            # Re-verify/Execute using Auditor's sandbox? 
-            # We can reuse the sandbox logic. Auditor has it.
-            # Let's add an 'execute_tool' method to Auditor for simplicity or use the one we put in mcp_server logic.
-            # But mcp_server is separate. I'll modify Auditor to allow execution.
-            
-            # Hack: modify Auditor locally effectively by just instantiating a new sandbox here or using a shared helper.
-            # I will use the Auditor's internal logic since I can't easily modify Auditor file without another tool call.
-            # Wait, I CAN modify Auditor file. But let's just use `e2b` here for now to save steps/complexity?
-            # Actually, reusing code is better. 
-            # I'll implement a quick execution here.
-            
             from e2b_code_interpreter import Sandbox
             try:
                 with Sandbox.create() as sb:
+                    # 1. Install Dependencies
+                    deps = tool_data.get("dependencies", [])
+                    if deps:
+                        if status_callback:
+                            await status_callback("log", f"Installing dependencies: {deps}...")
+                        for dep in deps:
+                            sb.commands.run(f"pip install -q {dep}")
+
                     code = tool_data["python_code"]
                     args_json = json.dumps(args)
+                    
+                    # Robust execution wrapper:
+                    # 1. Inspect function signature
+                    # 2. Filter args to only match valid parameters
+                    # 3. Handle 'unexpected keyword argument' proactively
                     wrapper = f"""
 import json
+import inspect
 {code}
-args = json.loads('{args_json}')
-print(json.dumps(run(**args)))
+
+# Introspection to prevent 'unexpected keyword argument' errors
+sig = inspect.signature(run)
+valid_params = sig.parameters.keys()
+raw_args = json.loads('{args_json}')
+filtered_args = {{k: v for k, v in raw_args.items() if k in valid_params}}
+
+# Check for missing required arguments? 
+# (Simple pass for now, let Python raise TypeError if missing)
+
+print(json.dumps(run(**filtered_args)))
 """
                     res = sb.run_code(wrapper)
                     if res.error:
@@ -242,13 +251,24 @@ print(json.dumps(run(**args)))
                     for log_line in output_lines[:-1]:
                         if log_line.strip() and status_callback:
                             await status_callback("log", f"Tool: {log_line}")
+
+                    # Check for explicit failure in result
+                    if "error" in raw_result.lower() or "failed" in raw_result.lower():
+                        return f"Tool execution returned an error: {raw_result}"
                             
                     # POST-PROCESSING: Make it conversational
                     explanation_prompt = f"""
 The user asked: "{message}"
 We ran a tool and got this result: {raw_result}
 
-Please answer the user's question using this result. Be helpful, professional, and concise. Act as a Financial Advisor.
+Please answer the user's question using the result. Act as a Financial Advisor.
+
+**CRITICAL RULES**:
+1. **Evidence-Based**: You must CITE the specific headline or data point from the result that supports your claim.
+2. **No Fluff**: Do not use generic phrases like "market resilience" or "positive momentum" unless the data explicitly says so.
+3. **Honesty**: If the result is sparse (e.g. few headlines due to holiday), SAY SO. Do not invent activity.
+4. **No Hallucinations**: If the tool returned no data, state "I could not find relevant data".
+5. **No Fake Precision**: Round abstract sentiment scores to 2 decimal places (e.g. 0.09). Do not use 4+ decimals.
 """
                     final_response = await client.chat.completions.create(
                         model=os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp"),

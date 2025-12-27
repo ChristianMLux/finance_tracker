@@ -19,6 +19,11 @@ async def get_tool_by_name(db: AsyncSession, name: str):
     return result.scalars().first()
 
 async def create_tool(db: AsyncSession, tool_data: dict):
+    # Ensure dependencies are serialized
+    if "dependencies" in tool_data and isinstance(tool_data["dependencies"], list):
+        import json
+        tool_data["dependencies"] = json.dumps(tool_data["dependencies"])
+
     db_tool = models.Tool(**tool_data)
     db.add(db_tool)
     await db.commit()

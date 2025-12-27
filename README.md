@@ -1,78 +1,83 @@
-# AI-Powered Personal Finance Tracker
+# AI-Powered Personal Finance Tracker (Universal Financial Advisor)
 
-A modern, full-stack application for tracking expenses with integrated AI agents for financial assistance and currency conversion. Built as a hiring task for the Fullstack Developer role.
+A state-of-the-art, full-stack application that transforms from a simple expense tracker into a **Universal Financial Advisor**. It features a self-extending AI architecture that dynamicially generates, audits, and executes financial tools in secure sandboxes.
 
-## 🚀 Overview
+## 🚀 Overview: The Finance Foundry
 
-This project combines a robust **Next.js** frontend with a high-performance **FastAPI** backend to provide a seamless expense management experience. The core feature is a pair of AI agents capable of performing real actions through tool calling:
-- **Finance Assistant**: Manages your local expense database (queries, additions, summaries).
-- **Currency Converter**: Integrates with an external API for real-time exchange rates.
+This project implements a unique **Dynamic Tool Retrieval** architecture inspired by the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). While traditional agents use a fixed set of tools, this system can learn and build new capabilities on demand.
+
+### Key Capabilities
+- **Expense Intelligence**: Natural language tracking and categorization.
+- **Dynamic Math**: On-the-fly generation of calculators for mortgages, taxes, and compound interest.
+- **Real-Time Data**: Integration with `yfinance` and DuckDuckGo for live stock prices and news sentiment.
+- **Evidence-Based Answers**: All agent claims are grounded in specific data points and assumption-logging.
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15+ (App Router), Tailwind CSS, Shadcn UI
-- **Backend**: FastAPI (Python 3.10+), SQLAlchemy (Async), SQLite
-- **AI**: OpenRouter API (`google/gemini-3-flash-preview`)
-- **Tools**: `httpx`, `aiosqlite`, `pydantic`
+- **Backend**: FastAPI, SQLAlchemy (Async), SQLite
+- **AI Runtimes**: 
+  - **OpenRouter API**: Powering `Gemini 3 Flash` & `Preview` models.
+  - **E2B Code Interpreter**: Secure, isolated Firecracker VMs for executing generated tools.
+- **Libraries**: `yfinance`, `duckduckgo-search`, `pandas`, `mcp-python-sdk` (blueprint integration).
 
 ## ⚙️ Setup Instructions
 
 ### 1. Prerequisites
-- Node.js (v18+)
-- Python (3.10+)
-- OpenRouter API Key
+- Node.js (v18+) & Python (3.10+)
+- [OpenRouter API Key](https://openrouter.ai/)
+- [E2B API Key](https://e2b.dev/) (Required for dynamic tool execution)
 
 ### 2. Environment Configuration
-Create a `.env` file in the root directory based on `env.example`:
+Create a `.env` file in the root based on `env.example`:
 ```bash
-OPENROUTER_API_KEY=your_key_here
+OPENROUTER_API_KEY=your_openrouter_key
+E2B_API_KEY=your_e2b_key
 NEXT_PUBLIC_API_URL=http://localhost:8000
+LLM_MODEL=google/gemini-3-flash-preview
 ```
 
-### 3. Backend Setup
+### 3. Backend & Tooling
 ```bash
-# Navigate to the project root
-python -m venv venv
-source venv/bin/activate  # On Windows: venv/Scripts/activate
+# Setup environment
+python -m venv .venv
+source .venv/Scripts/activate  # Windows
 
-# Install dependencies
+# Install & Seed
 pip install -r backend/requirements.txt
-
-# Seed the database with sample data
 python backend/seed_data.py
 
-# Start the FastAPI server
+# Run
 uvicorn backend.main:app --reload
 ```
-The API will be available at [http://localhost:8000](http://localhost:8000). You can explore the interactive docs at `/docs`.
 
-### 4. Frontend Setup
+### 4. Frontend
 ```bash
-# In a new terminal, from the project root
-npm install
-npm run dev
+npm install && npm run dev
 ```
-The application will be running at [http://localhost:3000](http://localhost:3000).
 
-## 🤖 AI Agents
+## 🤖 The Agent Ecosystem
 
-### Finance Assistant
-Ask questions about your spending or add new expenses naturally:
-- *"How much did I spend on food this month?"*
-- *"Add $50 for groceries today"*
-- *"Summarize my spending in October"*
+The system uses a multi-agent hierarchy to ensure safety and accuracy:
 
-### Currency Converter
-Get real-time conversions using the integrated tool:
-- *"How much is 100 USD in EUR?"*
-- *"What is a flight for 500 GBP in USD?"*
+1. **Manager Agent**: The central orchestrator. Classifies intent and routes to specialized agents.
+2. **Architect Agent**: Writes high-quality, typed Python code to solve specific financial questions.
+3. **Auditor Agent**: Performs a "Double Audit":
+   - **Semantic Review**: LLM-based check for financial soundess (diversification, tax awareness).
+   - **Runtime Validation**: Executes code in an E2B Sandbox to ensure it runs correctly before registration.
+4. **Finance & Currency Agents**: Handles core CRUD and real-time exchange rate logic.
+
+## 🛡️ Security & Sandboxing
+
+All dynamically generated code is executed in **E2B Firecracker MicroVMs**. This provides:
+- **Total Isolation**: Generated tools cannot access your local system or environment variables.
+- **Safe External Access**: Allows tools to fetch stock data or news safely.
+- **Ephemeral Runtimes**: Every calculation happens in a fresh, clean environment.
 
 ## 📁 Project Structure
 
-- `backend/`: FastAPI application, agents logic, and database models.
-- `src/`: Next.js frontend source (components, hooks, styles).
-- `public/`: Static assets and project specification documents.
-- `tests/`: Verification scripts and output logs.
+- `backend/agents/`: Logic for Architect, Auditor, and specialized agents.
+- `tests/`: Automated verification workflows for agent logic and sandbox safety.
+- `infra/`: (Coming Soon) MCP Server deployment templates.
 
----
 

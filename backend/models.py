@@ -19,4 +19,5 @@ class Tool(Base):
     description = Column(String)
     python_code = Column(String)
     json_schema = Column(String) # Storing schema as JSON string
+    dependencies = Column(String, default="[]") # Storing list of dependencies as JSON string
     is_active = Column(Integer, default=1) # 1 for active, 0 for inactive
