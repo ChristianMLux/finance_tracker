@@ -11,6 +11,7 @@ from .architect import ArchitectAgent
 from .auditor import AuditorAgent
 from backend import crud, models
 from backend.database import AsyncSessionLocal
+from backend.services.chat_service import chat_service
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class ManagerAgent(BaseAgent):
         self.architect_agent = ArchitectAgent()
         self.auditor_agent = AuditorAgent()
 
-    async def _classify_intent(self, message: str, status_callback=None) -> str:
+    async def _classify_intent(self, message: str, history: list = [], status_callback=None) -> str:
         system_prompt = """Classify the user's intent into one of the following categories:
 - 'finance': Questions about expenses, adding expenses, or financial history (e.g., "How much did I spend?", "Add expense").
 - 'currency': simple currency conversion questions with specific numeric amounts (e.g., "Convert 100 USD to EUR", "What is 50 GBP in Yen?").
@@ -39,13 +40,20 @@ CRITICAL: If the user refers to their own "spending", "total", "costs", "expense
 If the request requires a formula or mathematical model (like taxes, loans, interest) that is not simple + - * /, it is 'new_tool'.
 Return ONLY the category name.
 """
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add history context to help with "that" references (e.g., "What is that in Euro?")
+        for msg in history:
+            # Skip system/tool messages if they exist in history (keep it simple for classifier)
+            if msg.get("role") in ["user", "assistant"]:
+                messages.append({"role": msg["role"], "content": msg["content"]})
+        
+        messages.append({"role": "user", "content": message})
+
         try:
             response = await client.chat.completions.create(
                 model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": message}
-                ]
+                messages=messages
             )
             intent = response.choices[0].message.content.strip().lower()
             if "composite" in intent: return "composite"
@@ -95,9 +103,25 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             # Fail open to ensure user experience isn't blocked by transient API errors
             return True
 
-    async def process_message(self, message: str, user_id: str = None, context=None, status_callback=None) -> str:
+    async def process_message(self, message: str, user_id: str = None, chat_id: str = "default", context=None, status_callback=None) -> str:
         if status_callback:
             await status_callback("log", "Starting Manager Agent processing...")
+
+        # Persist User Message
+        if user_id:
+             await chat_service.add_message(user_id, chat_id, "user", message)
+
+        # Retrieve Context from Firestore
+        history = []
+        if user_id:
+            try:
+                # Get last 10 messages for context
+                full_history = await chat_service.get_recent_messages(user_id, chat_id, limit=10)
+                
+                # Exclude the current message if it was already saved to avoid duplication in context
+                history = full_history[:-1] if full_history and full_history[-1]['content'] == message else full_history
+            except Exception as e:
+                logger.error(f"Failed to retrieve history: {e}")
         
         # GLOBAL SAFETY CHECK
         if status_callback:
@@ -109,27 +133,38 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
 
         if status_callback:
             await status_callback("log", "Classifying Intent...")
-        intent = await self._classify_intent(message, status_callback)
+        
+        intent = await self._classify_intent(message, history=history, status_callback=status_callback)
         logger.info(f"Intent detected: {intent}")
 
         if intent == "finance":
             if status_callback:
                 await status_callback("log", "Routing to Finance Agent")
-            return await self.finance_agent.process_message(message, user_id=user_id, context=context, status_callback=status_callback)
+            # Pass history as context
+            response = await self.finance_agent.process_message(message, user_id=user_id, context=history, status_callback=status_callback)
+            if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+            return response
         
         elif intent == "currency":
             if status_callback:
                 await status_callback("log", "Routing to Currency Agent")
-            return await self.currency_agent.process_message(message, context, status_callback)
+            response = await self.currency_agent.process_message(message, context=history, status_callback=status_callback)
+            if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+            return response
         
         elif intent == "composite":
             if status_callback:
                 await status_callback("log", "Processing Composite Request (Finance + Currency)")
-            finance_response = await self.finance_agent.process_message(message, user_id=user_id, status_callback=status_callback)
+            # Finance needs history too?
+            finance_response = await self.finance_agent.process_message(message, user_id=user_id, context=history, status_callback=status_callback)
             
             currency_prompt = f"The user wants: '{message}'. \nHere is the financial data found: {finance_response}\n\nPlease perform the conversion requested."
             
-            return await self.currency_agent.process_message(currency_prompt, context={"finance_data": finance_response}, status_callback=status_callback)
+            # Context for currency now includes finance data AND history
+            combined_context = {"history": history, "finance_data": finance_response}
+            response = await self.currency_agent.process_message(currency_prompt, context=combined_context, status_callback=status_callback)
+            if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+            return response
 
         elif intent == "new_tool":
             logger.info("New tool needed. Triggering Architect...")
@@ -138,7 +173,9 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             # 1. Generate
             tool_data = await self.architect_agent.generate_tool(message)
             if "error" in tool_data:
-                return f"I tried to build a tool for that but failed: {tool_data['error']}"
+                response = f"I tried to build a tool for that but failed: {tool_data['error']}"
+                if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+                return response
             
             # 2. Audit
             logger.info(f"Auditing tool: {tool_data.get('name')}")
@@ -147,7 +184,9 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             is_valid = await self.auditor_agent.validate_tool(tool_data)
             
             if not is_valid:
-                return "I generated a tool to help with that, but it failed my security/correctness audit. Please try again or be more specific."
+                response = "I generated a tool to help with that, but it failed my security/correctness audit. Please try again or be more specific."
+                if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+                return response
             
             # 3. Save to DB
             async with AsyncSessionLocal() as db:
@@ -256,12 +295,14 @@ print(json.dumps(run(**filtered_args)))
                          return f"Tool execution returned an error: {raw_result}"
                     
                     # Try to parse as JSON to check for visualization
+                    viz_payload = None
                     try:
                         result_json = json.loads(raw_result)
                         if isinstance(result_json, dict) and "_visualization" in result_json:
                             viz_data = result_json.pop("_visualization")
+                            viz_payload = {"component": "chart", "data": viz_data}
                             if status_callback:
-                                await status_callback("ui_evt", {"component": "chart", "data": viz_data})
+                                await status_callback("ui_evt", viz_payload)
                             
                             # Update raw_result to be the cleaned data for the LLM
                             raw_result = json.dumps(result_json)
@@ -286,7 +327,10 @@ Please answer the user's question using the result. Act as a Financial Advisor.
                         model=os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp"),
                         messages=[{"role": "user", "content": explanation_prompt}]
                     )
-                    return final_response.choices[0].message.content
+                    final_response_content = final_response.choices[0].message.content
+                    if user_id: 
+                        await chat_service.add_message(user_id, chat_id, "assistant", final_response_content, component=viz_payload)
+                    return final_response_content
             except Exception as e:
                 import traceback
                 tb = traceback.format_exc()

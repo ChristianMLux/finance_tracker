@@ -121,6 +121,7 @@ IMPORTANT DATA RULES:
 - ALWAYS use both 'date' (start) and 'end_date' when a specific time range is implied.
 - References to 'this month' mean from the 1st of the current month until today.
 - **Search vs Category**: If the user mentions a specific item, brand, or store (e.g., "Coffee", "Netflix", "Walmart"), use the 'search' parameter. Use 'category' for broad groups like "Food" or "Entertainment".
+- **Singular vs Plural**: Always use the **singular** form for categories to maximize matches (e.g., use 'Drink' instead of 'Drinks', 'Subscription' instead of 'Subscriptions').
 """
                 msg_history = [{"role": "system", "content": system_prompt}]
                 

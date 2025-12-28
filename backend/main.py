@@ -5,6 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from .database import engine, Base, get_db
+from . import auth # Initialize Firebase Admin EARLY
 from . import models, schemas, crud, agents
 from .routers import analytics
 
@@ -40,9 +41,6 @@ app.add_middleware(
 def read_root():
     return {"status": "ok", "message": "Finance Tracker API is running"}
 
-from .auth import verify_token, get_current_user
-
-# Dependency to get full user object is now imported from .auth
 
 @app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: models.User = Depends(get_current_user)):
@@ -69,10 +67,8 @@ import asyncio
 import json
 from fastapi.responses import StreamingResponse
 
-# ... imports ...
-
 @app.post("/chat")
-async def chat(message: str, current_user: models.User = Depends(get_current_user)):
+async def chat(message: str, chat_id: str = "default", current_user: models.User = Depends(get_current_user)):
     queue = asyncio.Queue()
     
     async def callback(log_type, content):
@@ -82,7 +78,7 @@ async def chat(message: str, current_user: models.User = Depends(get_current_use
 
     async def background_worker():
         try:
-            response = await agents.manager_agent.process_message(message, user_id=current_user.id, status_callback=callback)
+            response = await agents.manager_agent.process_message(message, user_id=current_user.id, chat_id=chat_id, status_callback=callback)
             # Final response
             await queue.put(json.dumps({"type": "response", "content": response}) + "\n")
         except Exception as e:

@@ -19,13 +19,16 @@ This project implements a unique **Dynamic Tool Retrieval** architecture inspire
 - **Frontend**: Next.js 15+ (App Router), Tailwind CSS, Shadcn UI, Recharts (v3.x)
 - **Backend**: FastAPI, SQLAlchemy (Async), PostgreSQL (Google Cloud SQL) / SQLite
 - **Authentication**: Firebase Auth (Google Sign-In)
+- **Memory/State**: Firebase Firestore (Persistent Chat History & Agent Context)
 - **AI Runtimes**: 
   - **OpenRouter API**: Powering `Gemini 3 Flash` & `Preview` models.
   - **E2B Code Interpreter**: Secure, isolated Firecracker VMs for executing generated tools.
 - **Infrastructure**: 
   - **MCP**: Model Context Protocol for tool discovery.
   - **Docker**: Containerized deployment for the MCP server.
-  - **Cloud SQL**: Managed PostgreSQL database for finance data.
+  - **Hybrid Database**: 
+    - **PostgreSQL**: ACID-compliant storage for transactions/budgets.
+    - **Firestore**: Real-time NoSQL storage for chat logs and agent memory.
 
 ## ⚙️ Setup Instructions
 
@@ -105,7 +108,7 @@ If using Google Cloud SQL, you can use the proxy for local development access:
 
 The system uses a multi-agent hierarchy to ensure safety and accuracy:
 
-1. **Manager Agent**: The central orchestrator. Classifies intent, handles context windowing, and processes **Generative UI** events (`ui_evt`).
+1. **Manager Agent**: The central orchestrator. Classifies intent, manages **Persistent Context** via Firestore, and processes **Generative UI** events (`ui_evt`).
 2. **Architect Agent**: Writes high-quality, typed Python code to solve specific financial questions and generates structured data for visualizations.
 3. **Auditor Agent**: Performs a "Double Audit":
    - **Semantic Review**: LLM-based check for financial soundness (diversification, tax awareness).

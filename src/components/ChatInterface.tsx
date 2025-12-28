@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { api, API_URL } from "@/lib/api"
+import { API_URL } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
 import { Input } from "./ui/Input"
 import { Button } from "./ui/Button"
@@ -9,6 +9,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { DynamicChart, ChartData } from "./DynamicChart"
 import { useAuth } from "@/context/AuthContext"
+import { useChatHistory } from "@/hooks/useChatHistory"
+import { v4 as uuidv4 } from 'uuid'
+import { PlusCircle, MessageSquarePlus } from "lucide-react"
 
 type Message = {
     role: 'user' | 'agent'
@@ -24,18 +27,42 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ onAction }: ChatInterfaceProps) {
-    const [messages, setMessages] = useState<Message[]>([])
+    const [chatId, setChatId] = useState("default")
+    const { messages: historyMessages, loading: historyLoading } = useChatHistory(chatId)
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const [statusLog, setStatusLog] = useState<string>("")
     const { token } = useAuth()
+    
+    const handleNewChat = () => {
+        const newId = uuidv4()
+        setChatId(newId)
+        setPendingMessages([]) 
+        setStatusLog("")
+    }
+    
+    // Map Firestore 'assistant' role to UI 'agent' role
+    const messages = historyMessages.map(msg => ({
+        ...msg,
+        role: msg.role === 'assistant' ? 'agent' : msg.role
+    })) as Message[]
+
+    const [pendingMessages, setPendingMessages] = useState<Message[]>([])
+    
+    // Merge history with pending messages (deduplicated by content for simplicty, or just append pending if not in history)
+    // Robust Strategy: Filter out pending messages that have appeared in history
+    const mergedMessages = [
+        ...messages, 
+        ...pendingMessages.filter(pm => !messages.some(m => m.content === pm.content && m.role === pm.role))
+    ]
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!input.trim()) return
 
         const userMessage = input
-        setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+        // Optimistic Update
+        setPendingMessages(prev => [...prev, { role: 'user', content: userMessage }])
         setInput("")
         setLoading(true)
         setStatusLog("Starting...")
@@ -44,7 +71,7 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
             const headers: HeadersInit = {}
             if (token) headers['Authorization'] = `Bearer ${token}`
 
-            const res = await fetch(`${API_URL}/chat?message=${encodeURIComponent(userMessage)}`, {
+            const res = await fetch(`${API_URL}/chat?message=${encodeURIComponent(userMessage)}&chat_id=${chatId}`, {
                 method: 'POST',
                 headers,
             })
@@ -57,6 +84,8 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
             const decoder = new TextDecoder()
             let buffer = ""
 
+            // Keep loading TRUE until stream ends to prevent input from re-enabling too early.
+            // The status log will be cleared when we finish or when a new message arrives.
             while (true) {
                 const { done, value } = await reader.read()
                 if (done) break
@@ -71,22 +100,7 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
                         const data = JSON.parse(line)
                         if (data.type === 'log') {
                             setStatusLog(data.content)
-                        } else if (data.type === 'response') {
-                            setMessages(prev => [...prev, { role: 'agent', content: data.content }])
-                        } else if (data.type === 'error') {
-                            setMessages(prev => [...prev, { role: 'agent', content: `Error: ${data.content}` }])
-                        } else if (data.type === 'event') {
-                            if (onAction) onAction(data.content)
-                        } else if (data.type === 'ui_evt') {
-                            // Render UI component (Chart, etc.)
-                            // Payload is nested in 'content' property by backend callback wrapper
-                            const payload = data.content; 
-                            setMessages(prev => [...prev, { 
-                                role: 'agent', 
-                                content: '', 
-                                component: { type: payload.component, data: payload.data } 
-                            }])
-                        }
+                        } 
                     } catch (e) {
                         console.error("Error parsing NDJSON:", e)
                     }
@@ -94,30 +108,45 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
             }
 
         } catch (error) {
-            setMessages(prev => [...prev, { role: 'agent', content: "Error: Failed to get response." }])
+            console.error(error)
         } finally {
             setLoading(false)
-            setStatusLog("")
+            setStatusLog("") 
         }
     }
 
     return (
         <Card className="h-[600px] flex flex-col glass-card border-none shadow-2xl">
-            <CardHeader className="border-b border-white/5 bg-white/5 backdrop-blur-md">
+            <CardHeader className="border-b border-white/5 bg-white/5 backdrop-blur-md flex flex-row items-center justify-between sticky top-0 z-10">
                 <CardTitle className="flex items-center gap-2">
                     <span className="text-xl">🤖</span>
                     Finance Assistant
                 </CardTitle>
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleNewChat}
+                    className="text-muted-foreground hover:text-primary gap-2"
+                    title="Start a new conversation"
+                >
+                    <MessageSquarePlus className="w-4 h-4" />
+                    <span className="hidden sm:inline">New Chat</span>
+                </Button>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
                 <div className="flex-1 overflow-y-auto space-y-4 p-4 scroll-smooth">
-                    {messages.length === 0 && (
+                    {mergedMessages.length === 0 && (
                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50 space-y-2">
                             <span className="text-4xl">💬</span>
                             <p>Ask me anything about your finances!</p>
+                            {chatId !== 'default' && <p className="text-xs">Chat ID: {chatId.slice(0,8)}...</p>}
                         </div>
                     )}
-                    {messages.map((msg, i) => (
+                    {mergedMessages.map((msg, i) => {
+                        // Skip rendering if message is empty and has no component (avoids empty bubbles)
+                        if (!msg.content && !msg.component) return null;
+                        
+                        return (
                         <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                             <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-md ${
                                 msg.role === 'user' 
@@ -167,7 +196,7 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
                                 )}
                             </div>
                         </div>
-                    ))}
+                    )})}
                     {loading && (
                         <div className="flex justify-start animate-pulse">
                             <div className="bg-muted rounded-2xl px-4 py-3 text-sm rounded-bl-none">
