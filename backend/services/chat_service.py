@@ -7,9 +7,18 @@ from typing import List, Dict, Optional
 logger = logging.getLogger(__name__)
 
 class ChatService:
+import os
+
     def __init__(self):
         try:
-            self.db = firestore.client()
+            # We are now running in the same project (fintracker-482613), so default credentials work automatically.
+            # We still allow an override via env var if needed.
+            project_id = os.getenv("NEXT_PUBLIC_FIREBASE_PROJECT_ID")
+            if project_id:
+                self.db = firestore.client(project=project_id)
+            else:
+                self.db = firestore.client()
+            logger.info(f"Firestore initialized (Project: {project_id or 'default'})")
         except Exception as e:
             logger.error(f"Error initializing Firestore client: {e}")
             self.db = None

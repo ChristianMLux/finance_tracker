@@ -17,8 +17,13 @@ logger = logging.getLogger(__name__)
 # Trigger reload
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(models.Base.metadata.create_all)
+    except Exception as e:
+        logger.critical(f"DATABASE CONNECTION FAILED: {e}")
+        logger.critical("Check your DATABASE_URL permissions and ensure the password is URL-encoded if it has special chars.")
+        raise e
     yield
 
 app = FastAPI(title="Finance Tracker API", lifespan=lifespan)
