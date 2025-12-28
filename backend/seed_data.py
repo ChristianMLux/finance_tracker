@@ -12,6 +12,8 @@ sys.path.append(parent_dir)
 from backend.database import AsyncSessionLocal, engine, Base
 from backend import models
 
+from sqlalchemy.future import select
+
 async def init_db():
     async with engine.begin() as conn:
         # Create tables
@@ -21,6 +23,37 @@ async def seed_data():
     await init_db()
     
     async with AsyncSessionLocal() as db:
+        # 1. Fetch existing users to link data to
+        result = await db.execute(select(models.User))
+        users = result.scalars().all()
+
+        if not users:
+            print("No users found in the database.")
+            print("Please log in to the application at least once to create a user record.")
+            return
+
+        print("\nFound the following users:")
+        for idx, user in enumerate(users):
+            print(f"{idx + 1}. {user.email} (ID: {user.id})")
+        
+        selected_user = None
+        if len(users) == 1:
+            selected_user = users[0]
+            print(f"\nOnly one user found. Automatically selecting: {selected_user.email}")
+        else:
+            while True:
+                try:
+                    choice = int(input("\nSelect user number to seed data for: "))
+                    if 1 <= choice <= len(users):
+                        selected_user = users[choice - 1]
+                        break
+                    else:
+                        print("Invalid selection.")
+                except ValueError:
+                    print("Please enter a number.")
+        
+        print(f"\nGenerating data for user: {selected_user.email}...")
+
         categories = [
             "Food", "Transport", "Entertainment", "Utilities", "Shopping", 
             "Health", "Travel", "Education"
@@ -36,8 +69,6 @@ async def seed_data():
             "Travel": ["Flight booking", "Hotel stay", "Souvenirs"],
             "Education": ["Online course", "Books", "Stationery"]
         }
-
-        print("Seeding data...")
         
         # Generate ~25 items
         for _ in range(25):
@@ -55,14 +86,15 @@ async def seed_data():
                 amount=amount,
                 category=category,
                 description=description,
-                date=date
+                date=date,
+                user_id=selected_user.id 
             )
             db.add(expense)
             print(f"Added: {description} (${amount}) - {date.date()}")
         
         await db.commit()
     
-    print("Seeding complete!")
+    print("\nSeeding complete!")
 
 if __name__ == "__main__":
     # Windows-specific fix for asyncio event loop policy if needed, 
@@ -70,4 +102,7 @@ if __name__ == "__main__":
     # Python 3.8+ on Windows defaults to ProactorEventLoop which is fine.
     
     # Run the seed function
-    asyncio.run(seed_data())
+    try:
+        asyncio.run(seed_data())
+    except KeyboardInterrupt:
+        print("\nOperation cancelled.")

@@ -68,7 +68,7 @@ source .venv/Scripts/activate  # Windows: .venv\Scripts\activate
 
 # Install & Seed
 pip install -r backend/requirements.txt
-python backend/seed_data.py
+python backend/seed_data.py # only seed data if user exists
 
 # Run Backend
 uvicorn backend.main:app --reload --port 8000
@@ -95,6 +95,12 @@ The MCP server can be run in a container (especially useful for cloud deployment
 cd infra/mcp
 docker-compose up --build
 ```
+
+### Start Development Environment (Windows)
+```powershell
+./start_dev.ps1
+```
+after the first user is created, run the seed data script again
 
 ### Database Proxy (Cloud SQL)
 If using Google Cloud SQL, you can use the proxy for local development access:

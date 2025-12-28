@@ -84,8 +84,12 @@ async def register_tools_from_db():
             # We need to capture 'tool' in the closure
             # Python loop variable capture warning! Use default arg.
             
-            async def handler(arguments: dict, _code=tool.python_code):
-                return await execute_tool_in_sandbox(_code, arguments)
+            def create_handler(code_str):
+                async def handler(arguments: dict):
+                    return await execute_tool_in_sandbox(code_str, arguments)
+                return handler
+
+            handler = create_handler(tool.python_code)
             
             # Register it
             # FastMCP.add_tool takes: name, description, fn, schema?

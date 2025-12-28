@@ -5,7 +5,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from .database import engine, Base, get_db
-from . import auth # Initialize Firebase Admin EARLY
+from .auth import get_current_user # Initialize Firebase Admin EARLY
 from . import models, schemas, crud, agents
 from .routers import analytics
 
