@@ -20,9 +20,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Finance Tracker API", lifespan=lifespan)
 
 # Configure CORS
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,13 +37,51 @@ app.add_middleware(
 def read_root():
     return {"status": "ok", "message": "Finance Tracker API is running"}
 
+from .auth import verify_token
+
+# Dependency to get full user object (and create if not exists)
+# Dependency to get full user object (and create if not exists)
+async def get_current_user(
+    token: dict = Depends(verify_token), 
+    db: AsyncSession = Depends(get_db)
+) -> models.User:
+    uid = token['uid']
+    email = token.get('email', f"{uid}@placeholder.com")
+    
+    user = await crud.get_user(db, uid)
+    if not user:
+        # Create user with REAL email from token
+        user_create = schemas.UserCreate(id=uid, email=email)
+        user = await crud.create_user_if_not_exists(db, user_create)
+    elif user.email != email and "placeholder.com" in user.email:
+        # Update placeholder email to real email if it changed (and was placeholder)
+        # This fixes the "wrong email" issue for existing users
+        user.email = email
+        await db.commit()
+        await db.refresh(user)
+        
+    return user
+
+@app.get("/users/me", response_model=schemas.User)
+async def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+@app.put("/users/me", response_model=schemas.User)
+async def update_user_me(user_update: schemas.UserUpdate, current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await crud.update_user(db, current_user.id, user_update)
+
+@app.delete("/users/me/data")
+async def clear_user_data(current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await crud.delete_user_data(db, current_user.id)
+    return {"status": "success", "message": "All user data deleted"}
+
 @app.post("/expenses/", response_model=schemas.Expense)
-async def create_expense(expense: schemas.ExpenseCreate, db: AsyncSession = Depends(get_db)):
-    return await crud.create_expense(db=db, expense=expense)
+async def create_expense(expense: schemas.ExpenseCreate, db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return await crud.create_expense(db=db, expense=expense, user_id=current_user.id)
 
 @app.get("/expenses/", response_model=list[schemas.Expense])
-async def read_expenses(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    return await crud.get_expenses(db, skip=skip, limit=limit)
+async def read_expenses(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return await crud.get_expenses(db, user_id=current_user.id, skip=skip, limit=limit)
 
 import asyncio
 import json
@@ -47,7 +90,7 @@ from fastapi.responses import StreamingResponse
 # ... imports ...
 
 @app.post("/chat")
-async def chat(message: str):
+async def chat(message: str, current_user: models.User = Depends(get_current_user)):
     queue = asyncio.Queue()
     
     async def callback(log_type, content):
@@ -57,7 +100,7 @@ async def chat(message: str):
 
     async def background_worker():
         try:
-            response = await agents.manager_agent.process_message(message, status_callback=callback)
+            response = await agents.manager_agent.process_message(message, user_id=current_user.id, status_callback=callback)
             # Final response
             await queue.put(json.dumps({"type": "response", "content": response}) + "\n")
         except Exception as e:

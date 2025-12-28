@@ -20,8 +20,8 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
-async def get_expenses_tool(db: AsyncSession, category: str = None, search: str = None, date: str = None, end_date: str = None):
-    query = select(models.Expense)
+async def get_expenses_tool(db: AsyncSession, user_id: str, category: str = None, search: str = None, date: str = None, end_date: str = None):
+    query = select(models.Expense).filter(models.Expense.user_id == user_id)
     if category:
         query = query.filter(models.Expense.category.ilike(f"%{category}%"))
     
@@ -55,12 +55,13 @@ async def get_expenses_tool(db: AsyncSession, category: str = None, search: str 
         
     return [f"{e.date.date()} - {e.description or 'Expense'} (${e.amount}) in {e.category}" for e in expenses]
 
-async def add_expense_tool(db: AsyncSession, amount: float, category: str, description: str = None):
+async def add_expense_tool(db: AsyncSession, user_id: str, amount: float, category: str, description: str = None):
     expense = models.Expense(
         amount=amount,
         category=category,
         description=description,
-        date=datetime.utcnow()
+        date=datetime.utcnow(),
+        user_id=user_id
     )
     db.add(expense)
     await db.commit()
@@ -102,7 +103,7 @@ finance_tools = [
 ]
 
 class FinanceAgent(BaseAgent):
-    async def process_message(self, message: str, context=None, status_callback=None) -> str:
+    async def process_message(self, message: str, user_id: str, context=None, status_callback=None) -> str:
         async with database.AsyncSessionLocal() as db:
             try:
                 system_prompt = f"""You are a friendly and insightful Financial Assistant aimed at helping users manage their money better.
@@ -155,9 +156,11 @@ IMPORTANT DATA RULES:
                         tool_result = ""
                         
                         if function_name == "get_expenses":
-                            tool_result = str(await get_expenses_tool(db, **function_args))
+                            tool_result = str(await get_expenses_tool(db, user_id=user_id, **function_args))
                         elif function_name == "add_expense":
-                            tool_result = await add_expense_tool(db, **function_args)
+                            tool_result = await add_expense_tool(db, user_id=user_id, **function_args)
+                            if status_callback:
+                                await status_callback("event", "expense_added")
                         
                         msg_history.append({
                             "tool_call_id": tool_call.id,

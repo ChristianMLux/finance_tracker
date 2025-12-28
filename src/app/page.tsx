@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { ChatInterface } from "@/components/ChatInterface";
 import { Dashboard } from "@/components/Dashboard";
 import { api } from "@/lib/api";
 
 export default function Home() {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   const handleDownloadReport = async () => {
     try {
       const expenses = await api.getExpenses();
@@ -51,7 +54,7 @@ export default function Home() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className="xl:col-span-2 space-y-8">
-          <Dashboard />
+          <Dashboard refreshTrigger={refreshTrigger} />
         </div>
         
         <div className="xl:col-span-1">
@@ -59,7 +62,11 @@ export default function Home() {
 
             <div className="relative">
                  <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-30 animate-pulse"></div>
-                 <ChatInterface />
+                 <ChatInterface onAction={(action) => {
+                     if (action === 'expense_added') {
+                         setRefreshTrigger(prev => prev + 1);
+                     }
+                 }} />
             </div>
             
 

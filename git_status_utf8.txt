@@ -1,0 +1,54 @@
+﻿ M .gitignore
+ M backend/__pycache__/crud.cpython-313.pyc
+ M backend/__pycache__/database.cpython-312.pyc
+ M backend/__pycache__/database.cpython-313.pyc
+ M backend/__pycache__/main.cpython-313.pyc
+ M backend/__pycache__/models.cpython-312.pyc
+ M backend/__pycache__/models.cpython-313.pyc
+ M backend/__pycache__/schemas.cpython-313.pyc
+ M backend/agents/__pycache__/finance.cpython-313.pyc
+ M backend/agents/__pycache__/manager.cpython-313.pyc
+ M backend/agents/finance.py
+ M backend/agents/manager.py
+ M backend/crud.py
+ M backend/database.py
+ M backend/main.py
+ M backend/models.py
+ M backend/requirements.txt
+ M backend/schemas.py
+ M package-lock.json
+ M package.json
+ M src/app/expenses/page.tsx
+ M src/app/layout.tsx
+ M src/app/page.tsx
+ M src/app/settings/page.tsx
+ M src/components/ChatInterface.tsx
+ M src/components/Dashboard.tsx
+ M src/components/ExpenseForm.tsx
+ M src/components/Navigation.tsx
+ M src/lib/api.ts
+ D tests/check_count.py
+ D tests/reproduce_issue.py
+ D tests/simple_verify.py
+ D tests/test_currency_output.txt
+ D tests/test_currency_output_utf8.txt
+ D tests/test_currency_output_v2.txt
+ D tests/test_currency_output_v2_utf8.txt
+ D tests/test_output.txt
+ D tests/test_output_utf8.txt
+ D tests/verify_dynamic_tool.py
+ D tests/verify_safety.py
+ D tests/verify_streaming.py
+ D tests/verify_tool_logging.py
+?? .firebaserc
+?? alembic.ini
+?? alembic/
+?? backend/auth.py
+?? cloud_sql_proxy.exe
+?? git_status.txt
+?? git_status_utf8.txt
+?? "public/Technische Roadmap Finance Tracker.md"
+?? src/app/login/
+?? src/context/
+?? src/lib/firebase/
+?? start_db_proxy.ps1

@@ -5,16 +5,23 @@ import { api, Expense } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
 import { ExpenseForm } from "./ExpenseForm"
 import { ExpenseList } from "./ExpenseList"
+import { useAuth } from "@/context/AuthContext"
 
-export function Dashboard() {
+interface DashboardProps {
+    refreshTrigger?: number;
+}
+
+export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
+    const { user } = useAuth()
     const [expenses, setExpenses] = useState<Expense[]>([])
-
     const [error, setError] = useState<string | null>(null)
 
     const fetchExpenses = async () => {
+        if (!user) return;
         try {
             setError(null)
-            const data = await api.getExpenses()
+            const token = await user.getIdToken()
+            const data = await api.getExpenses(token)
             setExpenses(data)
         } catch (error) {
             console.error(error)
@@ -24,7 +31,7 @@ export function Dashboard() {
 
     useEffect(() => {
         fetchExpenses()
-    }, [])
+    }, [user, refreshTrigger])
 
     const totalStats = expenses.reduce((acc, curr) => acc + curr.amount, 0)
     

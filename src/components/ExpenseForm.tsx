@@ -6,11 +6,14 @@ import { Button } from "./ui/Button"
 import { Input } from "./ui/Input"
  
 
+import { useAuth } from "@/context/AuthContext"
+
 interface ExpenseFormProps {
     onExpenseAdded: () => void
 }
 
 export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
+    const { user } = useAuth()
     const [amount, setAmount] = useState("")
     const [category, setCategory] = useState("")
     const [description, setDescription] = useState("")
@@ -20,14 +23,17 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!user) return
+        
         setLoading(true)
         setError(null)
         try {
+            const token = await user.getIdToken()
             await api.createExpense({
                 amount: parseFloat(amount),
                 category,
                 description
-            })
+            }, token)
             setAmount("")
             setCategory("")
             setDescription("")

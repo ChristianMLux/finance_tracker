@@ -7,17 +7,23 @@ import { Input } from "./ui/Input"
 import { Button } from "./ui/Button"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useAuth } from "@/context/AuthContext"
 
 type Message = {
     role: 'user' | 'agent'
     content: string
 }
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+    onAction?: (action: string) => void;
+}
+
+export function ChatInterface({ onAction }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const [statusLog, setStatusLog] = useState<string>("")
+    const { token } = useAuth()
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -30,8 +36,12 @@ export function ChatInterface() {
         setStatusLog("Starting...")
 
         try {
+            const headers: HeadersInit = {}
+            if (token) headers['Authorization'] = `Bearer ${token}`
+
             const res = await fetch(`${API_URL}/chat?message=${encodeURIComponent(userMessage)}`, {
                 method: 'POST',
+                headers,
             })
             
             if (!res.ok) throw new Error('Failed to send message')
@@ -60,6 +70,8 @@ export function ChatInterface() {
                             setMessages(prev => [...prev, { role: 'agent', content: data.content }])
                         } else if (data.type === 'error') {
                             setMessages(prev => [...prev, { role: 'agent', content: `Error: ${data.content}` }])
+                        } else if (data.type === 'event') {
+                            if (onAction) onAction(data.content)
                         }
                     } catch (e) {
                         console.error("Error parsing NDJSON:", e)

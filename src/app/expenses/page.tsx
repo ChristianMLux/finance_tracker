@@ -6,14 +6,17 @@ import { ExpenseList } from "@/components/ExpenseList"
 import { ExpenseForm } from "@/components/ExpenseForm"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
+import { useAuth } from "@/context/AuthContext"
 
 export default function ExpensesPage() {
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [isFormOpen, setIsFormOpen] = useState(false)
+    const { user, token } = useAuth()
 
     const fetchExpenses = async () => {
+        if (!token) return
         try {
-            const data = await api.getExpenses()
+            const data = await api.getExpenses(token)
             setExpenses(data)
         } catch (error) {
             console.error("Failed to fetch expenses", error)
@@ -21,8 +24,8 @@ export default function ExpensesPage() {
     }
 
     useEffect(() => {
-        fetchExpenses()
-    }, [])
+        if (user) fetchExpenses()
+    }, [user, token])
 
     return (
         <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">

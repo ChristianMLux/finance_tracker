@@ -17,6 +17,16 @@
 /public/SOT_FINANCE_TRACKER
 /public/HIRING_TASK_FULLSTACK_DEVELOPER_ChristianLux_TASK_A.txt
 /public/Dynamic Tool Retrieval via MCP.md
+/public/Technische Roadmap Finance Tracker.md
+
+# Binaries and large files
+cloud_sql_proxy.exe
+*.exe
+*.dll
+*.so
+*.dylib
+*.db
+!backend/seed_data.py # Keep the seed script
 
 # next.js
 /.next/
@@ -34,6 +44,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
 .env
 

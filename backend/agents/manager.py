@@ -90,13 +90,12 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             return is_safe
         except Exception as e:
             logger.error(f"Safety check failed: {e}")
-            return True # Fail open or closed? Let's fail open for reliability but log it, or fail closed? Fail closed is safer.
-            # Actually, let's fail safe (True) to not block user on API error, assuming the Intent Classifier already filtered some junk. 
-            # But the user asked for a hurdle. Let's return False if unsure? No, fail open is usually better for UX if API flakes. 
-            # Let's stick to True but log.
+        except Exception as e:
+            logger.error(f"Safety check failed: {e}")
+            # Fail open to ensure user experience isn't blocked by transient API errors
             return True
 
-    async def process_message(self, message: str, context=None, status_callback=None) -> str:
+    async def process_message(self, message: str, user_id: str = None, context=None, status_callback=None) -> str:
         if status_callback:
             await status_callback("log", "Starting Manager Agent processing...")
         
@@ -116,7 +115,7 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
         if intent == "finance":
             if status_callback:
                 await status_callback("log", "Routing to Finance Agent")
-            return await self.finance_agent.process_message(message, context, status_callback)
+            return await self.finance_agent.process_message(message, user_id=user_id, context=context, status_callback=status_callback)
         
         elif intent == "currency":
             if status_callback:
@@ -126,7 +125,7 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
         elif intent == "composite":
             if status_callback:
                 await status_callback("log", "Processing Composite Request (Finance + Currency)")
-            finance_response = await self.finance_agent.process_message(message, status_callback=status_callback)
+            finance_response = await self.finance_agent.process_message(message, user_id=user_id, status_callback=status_callback)
             
             currency_prompt = f"The user wants: '{message}'. \nHere is the financial data found: {finance_response}\n\nPlease perform the conversion requested."
             

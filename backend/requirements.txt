@@ -10,3 +10,6 @@ greenlet
 httpx
 mcp
 e2b-code-interpreter
+firebase-admin
+asyncpg
+alembic

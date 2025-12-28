@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/context/AuthContext"
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: "📊" },
@@ -11,6 +12,7 @@ const navItems = [
 
 export function Navigation() {
   const pathname = usePathname()
+  const { userData, signOut } = useAuth()
 
   return (
     <>
@@ -41,14 +43,23 @@ export function Navigation() {
         </div>
         
         <div className="mt-auto px-4 py-4 border-t border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs">
-              U
-            </div>
-            <div className="text-sm">
-              <p className="font-medium">User</p>
-              <p className="text-xs text-muted-foreground">Pro Plan</p>
-            </div>
+          <div className="flex flex-col gap-3">
+             <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs uppercase">
+                  {userData?.full_name ? userData.full_name[0] : (userData?.email?.[0] || "U")}
+                </div>
+                <div className="text-sm overflow-hidden">
+                  <p className="font-medium truncate">{userData?.full_name || userData?.email?.split('@')[0] || "Guest"}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{userData?.role || "Free"} Plan</p>
+                </div>
+             </div>
+             {/* Logout Button */}
+             <button 
+                onClick={() => signOut()} 
+                className="w-full text-xs text-left text-muted-foreground hover:text-destructive transition-colors flex items-center gap-2 pl-1"
+             >
+                <span className="text-lg">🚪</span> Sign Out
+             </button>
           </div>
         </div>
       </nav>

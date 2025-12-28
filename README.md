@@ -1,6 +1,6 @@
 # AI-Powered Personal Finance Tracker (Universal Financial Advisor)
 
-A state-of-the-art, full-stack application that transforms from a simple expense tracker into a **Universal Financial Advisor**. It features a self-extending AI architecture that dynamicially generates, audits, and executes financial tools in secure sandboxes.
+A state-of-the-art, full-stack application that transforms from a simple expense tracker into a **Universal Financial Advisor**. It features a self-extending AI architecture that dynamically generates, audits, and executes financial tools in secure sandboxes.
 
 ## 🚀 Overview: The Finance Foundry
 
@@ -15,11 +15,15 @@ This project implements a unique **Dynamic Tool Retrieval** architecture inspire
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15+ (App Router), Tailwind CSS, Shadcn UI
-- **Backend**: FastAPI, SQLAlchemy (Async), SQLite
+- **Backend**: FastAPI, SQLAlchemy (Async), SQLite/PostgreSQL
+- **Authentication**: Firebase Auth (Google Sign-In)
 - **AI Runtimes**: 
   - **OpenRouter API**: Powering `Gemini 3 Flash` & `Preview` models.
   - **E2B Code Interpreter**: Secure, isolated Firecracker VMs for executing generated tools.
-- **Libraries**: `yfinance`, `duckduckgo-search`, `pandas`, `mcp-python-sdk` (blueprint integration).
+- **Infrastructure**: 
+  - **MCP**: Model Context Protocol for tool discovery.
+  - **Docker**: Containerized deployment for the MCP server.
+  - **Cloud SQL**: Managed database (accessible via proxy).
 
 ## ⚙️ Setup Instructions
 
@@ -27,34 +31,73 @@ This project implements a unique **Dynamic Tool Retrieval** architecture inspire
 - Node.js (v18+) & Python (3.10+)
 - [OpenRouter API Key](https://openrouter.ai/)
 - [E2B API Key](https://e2b.dev/) (Required for dynamic tool execution)
+- [Firebase Project](https://console.firebase.google.com/) (For authentication)
 
 ### 2. Environment Configuration
 Create a `.env` file in the root based on `env.example`:
 ```bash
+# Core API Keys
 OPENROUTER_API_KEY=your_openrouter_key
 E2B_API_KEY=your_e2b_key
-NEXT_PUBLIC_API_URL=http://localhost:8000
 LLM_MODEL=google/gemini-3-flash-preview
+
+# Backend config
+NEXT_PUBLIC_API_URL=http://localhost:8000
+DATABASE_URL=sqlite+aiosqlite:///./finance.db
+
+# Firebase configuration (Found in Project Settings)
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=...
 ```
 
 ### 3. Backend & Tooling
 ```bash
 # Setup environment
 python -m venv .venv
-source .venv/Scripts/activate  # Windows
+source .venv/Scripts/activate  # Windows: .venv\Scripts\activate
 
 # Install & Seed
 pip install -r backend/requirements.txt
 python backend/seed_data.py
 
-# Run
-uvicorn backend.main:app --reload
+# Run Backend
+uvicorn backend.main:app --reload --port 8000
 ```
 
 ### 4. Frontend
 ```bash
 npm install && npm run dev
 ```
+
+## 🔌 Infrastructure & Deployment
+
+### Model Context Protocol (MCP) Server
+The system includes an MCP server that exposes dynamically generated tools to other MCP-compatible clients (like Claude Desktop).
+
+**Local Execution:**
+```powershell
+./infra/start_mcp_local.ps1
+```
+
+**Docker Deployment:**
+The MCP server can be run in a container (especially useful for cloud deployments):
+```bash
+cd infra/mcp
+docker-compose up --build
+```
+
+### Database Proxy (Cloud SQL)
+If using Google Cloud SQL, you can use the proxy for local development access:
+```powershell
+./start_db_proxy.ps1
+```
+> [!NOTE]
+> Ensure you have the `cloud_sql_proxy.exe` in your root directory and appropriate service account permissions.
 
 ## 🤖 The Agent Ecosystem
 
@@ -63,7 +106,7 @@ The system uses a multi-agent hierarchy to ensure safety and accuracy:
 1. **Manager Agent**: The central orchestrator. Classifies intent and routes to specialized agents.
 2. **Architect Agent**: Writes high-quality, typed Python code to solve specific financial questions.
 3. **Auditor Agent**: Performs a "Double Audit":
-   - **Semantic Review**: LLM-based check for financial soundess (diversification, tax awareness).
+   - **Semantic Review**: LLM-based check for financial soundness (diversification, tax awareness).
    - **Runtime Validation**: Executes code in an E2B Sandbox to ensure it runs correctly before registration.
 4. **Finance & Currency Agents**: Handles core CRUD and real-time exchange rate logic.
 
@@ -77,7 +120,8 @@ All dynamically generated code is executed in **E2B Firecracker MicroVMs**. This
 ## 📁 Project Structure
 
 - `backend/agents/`: Logic for Architect, Auditor, and specialized agents.
+- `src/`: Next.js frontend application.
+- `infra/mcp/`: Docker and configuration files for the MCP server.
 - `tests/`: Automated verification workflows for agent logic and sandbox safety.
-- `infra/`: (Coming Soon) MCP Server deployment templates.
 
 
