@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from 'next/link';
+
 import { ChatInterface } from "@/components/ChatInterface";
 import { Dashboard } from "@/components/Dashboard";
 import { ExpenseForm } from "@/components/ExpenseForm";
@@ -11,8 +11,8 @@ import { api, Expense } from "@/lib/api";
 
 import { useAuth } from "@/context/AuthContext";
 
-export default function Home() {
-  const { token, loading } = useAuth();
+function HomeContent() {
+  const { token } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const searchParams = useSearchParams();
@@ -133,4 +133,12 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+export default function Home() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <HomeContent />
+        </Suspense>
+    );
 }

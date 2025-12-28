@@ -16,7 +16,7 @@ export interface ChartData {
         name: string;
         color: string;
     }>;
-    data: any[];
+    data: Record<string, unknown>[];
 }
 
 interface DynamicChartProps {

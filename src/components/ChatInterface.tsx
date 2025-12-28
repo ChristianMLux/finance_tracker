@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { API_URL } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
 import { Input } from "./ui/Input"
@@ -11,7 +11,7 @@ import { DynamicChart, ChartData } from "./DynamicChart"
 import { useAuth } from "@/context/AuthContext"
 import { useChatHistory } from "@/hooks/useChatHistory"
 import { v4 as uuidv4 } from 'uuid'
-import { PlusCircle, MessageSquarePlus } from "lucide-react"
+import { MessageSquarePlus } from "lucide-react"
 import { formatTitle } from "@/lib/utils"
 
 type Message = {
@@ -19,7 +19,7 @@ type Message = {
     content: string
     component?: {
         type: string
-        data: any
+        data: unknown
     }
 }
 
@@ -28,9 +28,9 @@ interface ChatInterfaceProps {
     initialInput?: string;
 }
 
-export function ChatInterface({ onAction, initialInput }: ChatInterfaceProps) {
+export function ChatInterface({ initialInput }: ChatInterfaceProps) {
     const [chatId, setChatId] = useState("default")
-    const { messages: historyMessages, loading: historyLoading } = useChatHistory(chatId)
+    const { messages: historyMessages } = useChatHistory(chatId)
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const [statusLog, setStatusLog] = useState<string>("")
@@ -46,8 +46,7 @@ export function ChatInterface({ onAction, initialInput }: ChatInterfaceProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [tools, setTools] = useState<{name: string, title?: string}[]>([])
 
-    // Fetch tools on mount and when dropdown opens
-    const fetchTools = async () => {
+    const fetchTools = useCallback(async () => {
         if (!token) return
         try {
             const res = await fetch(`${API_URL}/tools/`, {
@@ -60,17 +59,17 @@ export function ChatInterface({ onAction, initialInput }: ChatInterfaceProps) {
         } catch (e) {
             console.error("Failed to fetch tools", e)
         }
-    }
+    }, [token])
 
     useEffect(() => {
         fetchTools()
-    }, [token])
+    }, [token, fetchTools])
 
     useEffect(() => {
         if (isDropdownOpen) {
             fetchTools()
         }
-    }, [isDropdownOpen])
+    }, [isDropdownOpen, fetchTools])
 
     const handleNewChat = () => {
         const newId = uuidv4()
@@ -244,13 +243,14 @@ export function ChatInterface({ onAction, initialInput }: ChatInterfaceProps) {
                                         <ReactMarkdown 
                                             remarkPlugins={[remarkGfm]}
                                             components={{
-                                                p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                                                ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2" {...props} />,
-                                                ol: ({node, ...props}) => <ol className="list-decimal pl-4 mb-2" {...props} />,
-                                                li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                                                a: ({node, ...props}) => <a className="text-primary underline underline-offset-4" {...props} />,
+                                                p: ({node, ...props}) => { void node; return <p className="mb-2 last:mb-0" {...props} /> },
+                                                ul: ({node, ...props}) => { void node; return <ul className="list-disc pl-4 mb-2" {...props} /> },
+                                                ol: ({node, ...props}) => { void node; return <ol className="list-decimal pl-4 mb-2" {...props} /> },
+                                                li: ({node, ...props}) => { void node; return <li className="mb-1" {...props} /> },
+                                                a: ({node, ...props}) => { void node; return <a className="text-primary underline underline-offset-4" {...props} /> },
                                                 code: ({node, className, children, ...props}) => {
-                                                    const match = /language-(\w+)/.exec(className || '')
+                                                    void node;
+                                                    // const match = /language-(\w+)/.exec(className || '')
                                                     return !className ? (
                                                         <code className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded font-mono text-xs" {...props}>
                                                             {children}
@@ -261,9 +261,9 @@ export function ChatInterface({ onAction, initialInput }: ChatInterfaceProps) {
                                                         </code>
                                                     )
                                                 },
-                                                table: ({node, ...props}) => <div className="overflow-x-auto my-2"><table className="min-w-full divide-y divide-border" {...props} /></div>,
-                                                th: ({node, ...props}) => <th className="bg-muted px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider" {...props} />,
-                                                td: ({node, ...props}) => <td className="px-3 py-2 whitespace-nowrap text-sm border-t border-border" {...props} />,
+                                                table: ({node, ...props}) => { void node; return <div className="overflow-x-auto my-2"><table className="min-w-full divide-y divide-border" {...props} /></div> },
+                                                th: ({node, ...props}) => { void node; return <th className="bg-muted px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider" {...props} /> },
+                                                td: ({node, ...props}) => { void node; return <td className="px-3 py-2 whitespace-nowrap text-sm border-t border-border" {...props} /> },
                                             }}
                                         >
                                             {msg.content}

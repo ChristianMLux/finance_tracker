@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { useAuth } from '@/context/AuthContext';
 
@@ -7,8 +7,8 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  createdAt: any; // Firestore Timestamp
-  timestamp?: any;
+  createdAt: unknown; // Firestore Timestamp
+  timestamp?: unknown;
 }
 
 export function useChatHistory(chatId: string = 'default') {

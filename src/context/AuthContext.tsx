@@ -14,7 +14,7 @@ import { API_URL } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
-  userData: any | null;
+  userData: Record<string, unknown> | null;
   token: string | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
@@ -34,7 +34,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<any | null>(null);
+  const [userData, setUserData] = useState<Record<string, unknown> | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();

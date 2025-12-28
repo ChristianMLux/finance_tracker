@@ -47,11 +47,11 @@ export function Navigation() {
           <div className="flex flex-col gap-3">
              <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs uppercase">
-                  {userData?.full_name ? userData.full_name[0] : (userData?.email?.[0] || "U")}
+                  {(userData?.full_name as string) ? (userData?.full_name as string)?.[0] : ((userData?.email as string)?.[0] || "U")}
                 </div>
                 <div className="text-sm overflow-hidden">
-                  <p className="font-medium truncate">{userData?.full_name || userData?.email?.split('@')[0] || "Guest"}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{userData?.role || "Free"} Plan</p>
+                  <p className="font-medium truncate">{(userData?.full_name as string) || (userData?.email as string)?.split('@')[0] || "Guest"}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{(userData?.role as string) || "Free"} Plan</p>
                 </div>
              </div>
              {/* Logout Button */}

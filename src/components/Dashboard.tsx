@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import AllocationChart from "@/components/dashboard/AllocationChart";
 import CashflowChart from "@/components/dashboard/CashflowChart";
@@ -18,7 +18,7 @@ export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (!token) return;
         
         try {
@@ -51,15 +51,15 @@ export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token]);
 
     useEffect(() => {
         if (!authLoading && token) {
             fetchData();
         }
-    }, [authLoading, token, refreshTrigger]);
+    }, [authLoading, token, refreshTrigger, fetchData]);
 
-    if (authLoading) return <div className="h-48 flex items-center justify-center">Loading stats...</div>;
+    if (authLoading || loading) return <div className="h-48 flex items-center justify-center">Loading stats...</div>;
     if (!user) return null;
 
     if (error) {

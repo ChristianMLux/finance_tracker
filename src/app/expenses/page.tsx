@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { api, Expense } from "@/lib/api"
 import { ExpenseList } from "@/components/ExpenseList"
 import { ExpenseForm } from "@/components/ExpenseForm"
@@ -13,7 +13,7 @@ export default function ExpensesPage() {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const { user, token } = useAuth()
 
-    const fetchExpenses = async () => {
+    const fetchExpenses = useCallback(async () => {
         if (!token) return
         try {
             const data = await api.getExpenses(token)
@@ -21,11 +21,11 @@ export default function ExpensesPage() {
         } catch (error) {
             console.error("Failed to fetch expenses", error)
         }
-    }
+    }, [token])
 
     useEffect(() => {
         if (user) fetchExpenses()
-    }, [user, token])
+    }, [user, token, fetchExpenses])
 
     return (
         <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">

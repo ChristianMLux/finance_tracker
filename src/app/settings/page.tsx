@@ -13,7 +13,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (userData?.full_name) {
-            setFullName(userData.full_name)
+            setFullName(userData.full_name as string || "")
         }
     }, [userData])
 
@@ -40,7 +40,7 @@ export default function SettingsPage() {
                 alert("Profile updated!")
             } else {
                 const errText = await res.text();
-                alert(`Failed to update profile: ${res.status}`)
+                alert(`Failed to update profile: ${res.status} ${errText}`)
             }
         } catch (e) {
             console.error("Error in handleSaveProfile:", e)
@@ -108,13 +108,13 @@ export default function SettingsPage() {
                         <div className="grid gap-2">
                             <label className="text-sm font-medium">Email</label>
                             <div className="p-2 border rounded-md bg-muted text-muted-foreground">
-                                {userData?.email || user?.email || "Loading..."}
+                                {(userData?.email as string) || user?.email || "Loading..."}
                             </div>
                         </div>
                          <div className="grid gap-2">
                             <label className="text-sm font-medium">My Role</label>
                             <div className="p-2 border rounded-md bg-muted text-success-foreground capitalize font-bold">
-                                {userData?.role || "Free"} Plan
+                                {(userData?.role as string) || "Free"} Plan
                             </div>
                         </div>
                     </CardContent>
