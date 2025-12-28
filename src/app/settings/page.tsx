@@ -18,24 +18,15 @@ export default function SettingsPage() {
     }, [userData])
 
     const handleSaveProfile = async () => {
-        alert("DEBUG: Handle Save Called") // Uncomment to verify click
-        console.log("Starting profile update...");
-        
         if (!user) {
-            console.error("No user found in AuthContext");
-            alert("Error: You are not logged in (user object is missing). Try refreshing.")
+            alert("Error: You are not logged in. Try refreshing.")
             return
         }
         setIsSaving(true)
         try {
-            console.log("Getting token...");
             const token = await user.getIdToken()
-            console.log("Token retrieved. API URL:", API_URL);
             
-            const url = `${API_URL}/users/me`;
-            console.log("Fetching:", url);
-            
-            const res = await fetch(url, {
+            const res = await fetch(`${API_URL}/users/me`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -44,20 +35,16 @@ export default function SettingsPage() {
                 body: JSON.stringify({ full_name: fullName })
             })
 
-            console.log("Response status:", res.status);
-            
             if (res.ok) {
-                console.log("Update successful");
                 await refreshProfile()
                 alert("Profile updated!")
             } else {
                 const errText = await res.text();
-                console.error("Update failed:", res.status, errText);
                 alert(`Failed to update profile: ${res.status}`)
             }
         } catch (e) {
             console.error("Error in handleSaveProfile:", e)
-            alert("Error updating profile. Check console for details.")
+            alert("Error updating profile.")
         } finally {
             setIsSaving(false)
         }

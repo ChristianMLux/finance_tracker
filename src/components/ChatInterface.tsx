@@ -7,11 +7,16 @@ import { Input } from "./ui/Input"
 import { Button } from "./ui/Button"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { DynamicChart, ChartData } from "./DynamicChart"
 import { useAuth } from "@/context/AuthContext"
 
 type Message = {
     role: 'user' | 'agent'
     content: string
+    component?: {
+        type: string
+        data: any
+    }
 }
 
 interface ChatInterfaceProps {
@@ -72,6 +77,15 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
                             setMessages(prev => [...prev, { role: 'agent', content: `Error: ${data.content}` }])
                         } else if (data.type === 'event') {
                             if (onAction) onAction(data.content)
+                        } else if (data.type === 'ui_evt') {
+                            // Render UI component (Chart, etc.)
+                            // Payload is nested in 'content' property by backend callback wrapper
+                            const payload = data.content; 
+                            setMessages(prev => [...prev, { 
+                                role: 'agent', 
+                                content: '', 
+                                component: { type: payload.component, data: payload.data } 
+                            }])
                         }
                     } catch (e) {
                         console.error("Error parsing NDJSON:", e)
@@ -112,7 +126,13 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
                                     ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-bl-none' 
                                     : 'bg-muted text-foreground rounded-bl-none'
                             }`}>
-                                {msg.role === 'agent' ? (
+                                {msg.component ? (
+                                    msg.component.type === 'chart' ? (
+                                        <DynamicChart data={msg.component.data as ChartData} />
+                                    ) : (
+                                        <div className="text-sm text-muted-foreground italic">[Unsupported Component: {msg.component.type}]</div>
+                                    )
+                                ) : msg.role === 'agent' ? (
                                     <div className="prose prose-sm dark:prose-invert max-w-none break-words">
                                         <ReactMarkdown 
                                             remarkPlugins={[remarkGfm]}

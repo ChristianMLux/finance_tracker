@@ -24,7 +24,7 @@ const categoryIcons: Record<string, string> = {
     "Other": "📦"
 }
 
-export function ExpenseList({ expenses }: ExpenseListProps) {
+export function ExpenseList({ expenses = [] }: ExpenseListProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [sortOption, setSortOption] = useState<SortOption>("date-desc")
     const [page, setPage] = useState(1)

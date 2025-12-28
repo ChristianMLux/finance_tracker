@@ -39,6 +39,22 @@ Your goal is to write a single, self-contained Python function that solves a com
       - **Secondary Strategy (Fallback)**: If no library exists, use `requests` to fetch data from public APIs.
       - **CRITICAL**: If the fetch fails (exception), do NOT return "estimated" or "fallback" data. Return an error message or empty dict.
       - **NO HALLUCINATIONS**: Never hardcode "fake" news or prices to "make it work". Failure is better than lying.
+      - **VISUALIZATION**:
+          - If the user asks for a comparison, projection, or chart, you MUST include a key `_visualization` in your return dictionary.
+          - Format:
+            ```python
+            {
+                "data": {"current": 100, "future": 150},
+                "_visualization": {
+                    "type": "bar", # or 'line', 'pie', 'area'
+                    "title": "Projection vs Current",
+                    "xAxisKey": "name", # Key for X-axis labels in the data list
+                    "series": [{"key": "value", "name": "Net Worth", "color": "#8884d8"}],
+                    "data": [{"name": "Current", "value": 100}, {"name": "Future", "value": 150}] 
+                }
+            }
+            ```
+          - The `data` list in `_visualization` should be the actual data points for the chart.
     - **Libraries**:
       - You can use ANY standard Python library (e.g. `yfinance`, `duckduckgo-search`).
       - You MUST list external libraries in the `dependencies` field of your JSON output.

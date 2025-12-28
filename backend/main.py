@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from .database import engine, Base, get_db
 from . import models, schemas, crud, agents
+from .routers import analytics
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,6 +19,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Finance Tracker API", lifespan=lifespan)
+
+app.include_router(analytics.router)
 
 # Configure CORS
 origins = [
@@ -37,30 +40,9 @@ app.add_middleware(
 def read_root():
     return {"status": "ok", "message": "Finance Tracker API is running"}
 
-from .auth import verify_token
+from .auth import verify_token, get_current_user
 
-# Dependency to get full user object (and create if not exists)
-# Dependency to get full user object (and create if not exists)
-async def get_current_user(
-    token: dict = Depends(verify_token), 
-    db: AsyncSession = Depends(get_db)
-) -> models.User:
-    uid = token['uid']
-    email = token.get('email', f"{uid}@placeholder.com")
-    
-    user = await crud.get_user(db, uid)
-    if not user:
-        # Create user with REAL email from token
-        user_create = schemas.UserCreate(id=uid, email=email)
-        user = await crud.create_user_if_not_exists(db, user_create)
-    elif user.email != email and "placeholder.com" in user.email:
-        # Update placeholder email to real email if it changed (and was placeholder)
-        # This fixes the "wrong email" issue for existing users
-        user.email = email
-        await db.commit()
-        await db.refresh(user)
-        
-    return user
+# Dependency to get full user object is now imported from .auth
 
 @app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: models.User = Depends(get_current_user)):

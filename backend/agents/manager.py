@@ -252,8 +252,21 @@ print(json.dumps(run(**filtered_args)))
                             await status_callback("log", f"Tool: {log_line}")
 
                     # Check for explicit failure in result
-                    if "error" in raw_result.lower() or "failed" in raw_result.lower():
-                        return f"Tool execution returned an error: {raw_result}"
+                    if "error" in raw_result.lower() and "{" not in raw_result:
+                         return f"Tool execution returned an error: {raw_result}"
+                    
+                    # Try to parse as JSON to check for visualization
+                    try:
+                        result_json = json.loads(raw_result)
+                        if isinstance(result_json, dict) and "_visualization" in result_json:
+                            viz_data = result_json.pop("_visualization")
+                            if status_callback:
+                                await status_callback("ui_evt", {"component": "chart", "data": viz_data})
+                            
+                            # Update raw_result to be the cleaned data for the LLM
+                            raw_result = json.dumps(result_json)
+                    except json.JSONDecodeError:
+                        pass # Not JSON, treat as text string
                             
                     # POST-PROCESSING: Make it conversational
                     explanation_prompt = f"""

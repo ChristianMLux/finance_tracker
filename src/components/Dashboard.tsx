@@ -1,116 +1,96 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { api, Expense } from "@/lib/api"
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
-import { ExpenseForm } from "./ExpenseForm"
-import { ExpenseList } from "./ExpenseList"
-import { useAuth } from "@/context/AuthContext"
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import AllocationChart from "@/components/dashboard/AllocationChart";
+import CashflowChart from "@/components/dashboard/CashflowChart";
+import { API_URL } from "@/lib/api";
+import { PieChart as PieIcon, Activity } from "lucide-react";
 
 interface DashboardProps {
     refreshTrigger?: number;
 }
 
 export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
-    const { user } = useAuth()
-    const [expenses, setExpenses] = useState<Expense[]>([])
-    const [error, setError] = useState<string | null>(null)
+    const { token, loading: authLoading, user } = useAuth();
+    const [allocationData, setAllocationData] = useState([]);
+    const [cashflowData, setCashflowData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const fetchExpenses = async () => {
-        if (!user) return;
+    const fetchData = async () => {
+        if (!token) return;
+        
         try {
-            setError(null)
-            const token = await user.getIdToken()
-            const data = await api.getExpenses(token)
-            setExpenses(data)
-        } catch (error) {
-            console.error(error)
-            setError("Failed to load expenses. Is backend running?")
+            setLoading(true);
+            setError(null);
+            
+            const [allocRes, cashRes] = await Promise.all([
+                fetch(`${API_URL}/analytics/allocation`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                fetch(`${API_URL}/analytics/cashflow?days=180`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            ]);
+
+            if (!allocRes.ok || !cashRes.ok) {
+                // Silently handle 401s or other issues if needed, but here we want to know
+                console.error("Analytics fetch failed");
+                throw new Error("Failed to fetch analytics");
+            }
+
+            const allocData = await allocRes.json();
+            const cashData = await cashRes.json();
+
+            setAllocationData(allocData);
+            setCashflowData(cashData);
+        } catch (err) {
+            console.error(err);
+            setError("Could not load dashboard data.");
+        } finally {
+            setLoading(false);
         }
-    }
+    };
 
     useEffect(() => {
-        fetchExpenses()
-    }, [user, refreshTrigger])
+        if (!authLoading && token) {
+            fetchData();
+        }
+    }, [authLoading, token, refreshTrigger]);
 
-    const totalStats = expenses.reduce((acc, curr) => acc + curr.amount, 0)
-    
+    if (authLoading) return <div className="h-48 flex items-center justify-center">Loading stats...</div>;
+    if (!user) return null;
 
-    const categoryStats = expenses.reduce((acc, curr) => {
-        acc[curr.category] = (acc[curr.category] || 0) + curr.amount
-        return acc
-    }, {} as Record<string, number>)
-    
-
-    const topCategory = Object.entries(categoryStats).sort(([,a], [,b]) => b - a)[0]
+    if (error) {
+        return <div className="text-sm text-destructive">{error}</div>;
+    }
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            {error && (
-                <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md border border-destructive/20 text-sm">
-                    ⚠️ {error}
+        <div className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div className="p-6 flex flex-col gap-1">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <PieIcon className="h-4 w-4" /> Expense Allocation
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Distribution by category</p>
                 </div>
-            )}
-
-            <div className="grid gap-6 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Spending</CardTitle>
-                        <span className="text-2xl">💰</span>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-foreground">${totalStats.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground mt-1">+12% from last month</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Top Category</CardTitle>
-                        <span className="text-2xl">📊</span>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-foreground">{topCategory ? topCategory[0] : "N/A"}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                             {topCategory ? `$${topCategory[1].toFixed(2)} spent` : "No data yet"}
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Budget Status</CardTitle>
-                        <span className="text-2xl">🎯</span>
-                    </CardHeader>
-                    <CardContent>
-                         <div className="text-3xl font-bold text-foreground">On Track</div>
-                         <div className="w-full bg-secondary h-2 mt-2 rounded-full overflow-hidden">
-                            <div className="bg-primary h-full w-[65%]" />
-                         </div>
-                         <p className="text-xs text-muted-foreground mt-1">65% of budget used</p>
-                    </CardContent>
-                </Card>
+                <div className="p-6 pt-0 pl-0">
+                    <AllocationChart data={allocationData} />
+                </div>
             </div>
-            
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between">
-                         <h2 className="text-xl font-semibold tracking-tight">Recent Transactions</h2>
-
-                    </div>
-                    <ExpenseList expenses={expenses} />
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div className="p-6 flex flex-col gap-1">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Activity className="h-4 w-4" /> Monthly Cashflow
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Trends over last 6 months</p>
                 </div>
-                
-                <div className="lg:col-span-1 space-y-6">
-                    <Card className="bg-primary/5 border-primary/20">
-                        <CardHeader>
-                             <CardTitle className="text-primary">Quick Add</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <ExpenseForm onExpenseAdded={fetchExpenses} />
-                        </CardContent>
-                    </Card>
+                <div className="p-6 pt-0 pl-0">
+                    <CashflowChart data={cashflowData} />
                 </div>
             </div>
         </div>
-    )
+    );
 }

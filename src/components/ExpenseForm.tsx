@@ -9,10 +9,11 @@ import { Input } from "./ui/Input"
 import { useAuth } from "@/context/AuthContext"
 
 interface ExpenseFormProps {
-    onExpenseAdded: () => void
+    onExpenseAdded?: () => void
+    onSuccess?: () => void
 }
 
-export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
+export function ExpenseForm({ onExpenseAdded, onSuccess }: ExpenseFormProps) {
     const { user } = useAuth()
     const [amount, setAmount] = useState("")
     const [category, setCategory] = useState("")
@@ -37,7 +38,8 @@ export function ExpenseForm({ onExpenseAdded }: ExpenseFormProps) {
             setAmount("")
             setCategory("")
             setDescription("")
-            onExpenseAdded()
+            if (onExpenseAdded) onExpenseAdded()
+            if (onSuccess) onSuccess()
         } catch (error) {
             console.error("Failed to add expense", error)
             setError("Failed to add expense. Please try again.")

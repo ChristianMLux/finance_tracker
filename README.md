@@ -8,14 +8,16 @@ This project implements a unique **Dynamic Tool Retrieval** architecture inspire
 
 ### Key Capabilities
 - **Expense Intelligence**: Natural language tracking and categorization.
+- **Advanced Analytics**: Interactive dashboards for asset allocation (Donut) and monthly cashflow (Stacked Bar) using Recharts.
+- **Generative UI**: AI Agents can now emit dynamic visual components (Charts, Tables) directly in the chat stream.
 - **Dynamic Math**: On-the-fly generation of calculators for mortgages, taxes, and compound interest.
 - **Real-Time Data**: Integration with `yfinance` and DuckDuckGo for live stock prices and news sentiment.
 - **Evidence-Based Answers**: All agent claims are grounded in specific data points and assumption-logging.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 15+ (App Router), Tailwind CSS, Shadcn UI
-- **Backend**: FastAPI, SQLAlchemy (Async), SQLite/PostgreSQL
+- **Frontend**: Next.js 15+ (App Router), Tailwind CSS, Shadcn UI, Recharts (v3.x)
+- **Backend**: FastAPI, SQLAlchemy (Async), PostgreSQL (Google Cloud SQL) / SQLite
 - **Authentication**: Firebase Auth (Google Sign-In)
 - **AI Runtimes**: 
   - **OpenRouter API**: Powering `Gemini 3 Flash` & `Preview` models.
@@ -23,7 +25,7 @@ This project implements a unique **Dynamic Tool Retrieval** architecture inspire
 - **Infrastructure**: 
   - **MCP**: Model Context Protocol for tool discovery.
   - **Docker**: Containerized deployment for the MCP server.
-  - **Cloud SQL**: Managed database (accessible via proxy).
+  - **Cloud SQL**: Managed PostgreSQL database for finance data.
 
 ## ⚙️ Setup Instructions
 
@@ -103,12 +105,12 @@ If using Google Cloud SQL, you can use the proxy for local development access:
 
 The system uses a multi-agent hierarchy to ensure safety and accuracy:
 
-1. **Manager Agent**: The central orchestrator. Classifies intent and routes to specialized agents.
-2. **Architect Agent**: Writes high-quality, typed Python code to solve specific financial questions.
+1. **Manager Agent**: The central orchestrator. Classifies intent, handles context windowing, and processes **Generative UI** events (`ui_evt`).
+2. **Architect Agent**: Writes high-quality, typed Python code to solve specific financial questions and generates structured data for visualizations.
 3. **Auditor Agent**: Performs a "Double Audit":
    - **Semantic Review**: LLM-based check for financial soundness (diversification, tax awareness).
    - **Runtime Validation**: Executes code in an E2B Sandbox to ensure it runs correctly before registration.
-4. **Finance & Currency Agents**: Handles core CRUD and real-time exchange rate logic.
+4. **Finance & Analytics Agents**: Handles core CRUD and SQL-based data aggregation for reporting.
 
 ## 🛡️ Security & Sandboxing
 

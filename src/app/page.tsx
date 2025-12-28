@@ -1,16 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatInterface } from "@/components/ChatInterface";
 import { Dashboard } from "@/components/Dashboard";
-import { api } from "@/lib/api";
+import { ExpenseForm } from "@/components/ExpenseForm";
+import { ExpenseList } from "@/components/ExpenseList";
+import { api, Expense } from "@/lib/api";
+
+import { useAuth } from "@/context/AuthContext";
 
 export default function Home() {
+  const { token, loading } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  useEffect(() => {
+    if (token) {
+        api.getExpenses(token).then(setExpenses).catch(console.error);
+    }
+  }, [token, refreshTrigger]);
 
   const handleDownloadReport = async () => {
+    if (!token) return;
     try {
-      const expenses = await api.getExpenses();
+      const expenses = await api.getExpenses(token);
       const csvHeader = "Date,Category,Amount,Description\n";
       const csvRows = expenses.map(e => 
         `${e.date},${e.category},${e.amount},"${e.description || ''}"`
@@ -55,6 +68,42 @@ export default function Home() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className="xl:col-span-2 space-y-8">
           <Dashboard refreshTrigger={refreshTrigger} />
+          
+          <div className="grid gap-8 md:grid-cols-2">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold tracking-tight">Quick Add</h2>
+              <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div className="p-6">
+                  <ExpenseForm onSuccess={() => setRefreshTrigger(prev => prev + 1)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold tracking-tight">Budget Overview</h2>
+              <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-medium">Monthly Budget</span>
+                    <span className="text-sm text-muted-foreground">$2,450.00 left</span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary w-[65%]" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    You have spent 65% of your total budget.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold tracking-tight">Recent Expenses</h2>
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+              <ExpenseList expenses={expenses} key={refreshTrigger} />
+            </div>
+          </div>
         </div>
         
         <div className="xl:col-span-1">
@@ -69,7 +118,6 @@ export default function Home() {
                  }} />
             </div>
             
-
           </div>
         </div>
       </div>
