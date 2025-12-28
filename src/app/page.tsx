@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from 'next/link';
 import { ChatInterface } from "@/components/ChatInterface";
 import { Dashboard } from "@/components/Dashboard";
 import { ExpenseForm } from "@/components/ExpenseForm";
@@ -13,6 +15,11 @@ export default function Home() {
   const { token, loading } = useAuth();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const searchParams = useSearchParams();
+  
+  const toolName = searchParams.get('tool');
+  const toolTitle = searchParams.get('title');
+  const initialInput = toolName ? `I want to use the ${toolTitle || toolName} tool.` : "";
 
   useEffect(() => {
     if (token) {
@@ -56,6 +63,7 @@ export default function Home() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+
            <button 
              onClick={handleDownloadReport}
              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md text-sm font-medium hover:bg-secondary/80 transition-colors"
@@ -111,7 +119,9 @@ export default function Home() {
 
             <div className="relative">
                  <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-30 animate-pulse"></div>
-                 <ChatInterface onAction={(action) => {
+                 <ChatInterface 
+                    initialInput={initialInput}
+                    onAction={(action) => {
                      if (action === 'expense_added') {
                          setRefreshTrigger(prev => prev + 1);
                      }

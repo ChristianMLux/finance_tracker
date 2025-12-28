@@ -142,7 +142,10 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
                 await status_callback("log", "Routing to Finance Agent")
             # Pass history as context
             response = await self.finance_agent.process_message(message, user_id=user_id, context=history, status_callback=status_callback)
-            if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+            if user_id: 
+                logger.info(f"Saving Finance Agent response to history for user {user_id}, chat {chat_id}")
+                await chat_service.add_message(user_id, chat_id, "assistant", response)
+                logger.info("Response saved successfully.")
             return response
         
         elif intent == "currency":

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Any
 
 class ExpenseBase(BaseModel):
     amount: float
@@ -35,5 +35,23 @@ class User(UserBase):
     role: str
     subscription_status: str
     created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# Tool Schemas
+class ToolBase(BaseModel):
+    name: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    python_code: Optional[str] = None
+    json_schema: Optional[str] = None
+    dependencies: Optional[str] = "[]"
+    is_active: Optional[int] = 1
+
+class ToolCreate(ToolBase):
+    pass
+
+class Tool(ToolBase):
+    id: int
     
     model_config = ConfigDict(from_attributes=True)

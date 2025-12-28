@@ -31,17 +31,24 @@ export function useChatHistory(chatId: string = 'default') {
     }
 
     const messagesRef = collection(db, 'users', user.uid, 'chats', chatId, 'messages');
+    console.log(`[ChatHistory] Listening to: users/${user.uid}/chats/${chatId}/messages`);
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs: Message[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Message));
+      console.log(`[ChatHistory] Snapshot received. Docs: ${snapshot.docs.length}, Empty: ${snapshot.empty}`);
+      const msgs: Message[] = snapshot.docs.map(doc => {
+          const data = doc.data();
+          // console.log("Doc:", doc.id, data); 
+          return {
+            id: doc.id,
+            ...data
+          } as Message
+      });
+      console.log(`[ChatHistory] State Updating with ${msgs.length} messages`);
       setMessages(msgs);
       setLoading(false);
     }, (err) => {
-      console.error("Firestore Error:", err);
+      console.error("[ChatHistory] Firestore Error:", err);
       setError(err.message);
       setLoading(false);
     });

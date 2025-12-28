@@ -32,7 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
 });
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -49,27 +49,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                   Authorization: `Bearer ${token}`
               }
           });
+          
           if (res.ok) {
               const data = await res.json();
               setUserData(data);
           }
       } catch (e) {
           console.error("Failed to fetch user profile", e);
+          // Don't get stuck loading
       }
   };
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      console.log("Auth: State changed", user ? user.uid : "No user");
       setUser(user);
       if (user) {
-        const t = await user.getIdToken();
-        setToken(t);
-        await fetchUserProfile(user);
+        try {
+            console.log("Auth: Getting token...");
+            const t = await user.getIdToken();
+            console.log("Auth: Token acquired");
+            setToken(t);
+            console.log("Auth: Fetching profile...");
+            await fetchUserProfile(user);
+            console.log("Auth: Profile fetched");
+        } catch (err) {
+            console.error("Auth: Error validation flow", err);
+        }
       } else {
         setToken(null);
         setUserData(null);
       }
       setLoading(false);
+      console.log("Auth: Loading set to false");
     });
 
     return () => unsubscribe();

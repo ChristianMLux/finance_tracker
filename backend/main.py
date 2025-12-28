@@ -12,7 +12,9 @@ from .routers import analytics
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Async Database Initialization
+# Trigger reload
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -62,6 +64,10 @@ async def create_expense(expense: schemas.ExpenseCreate, db: AsyncSession = Depe
 @app.get("/expenses/", response_model=list[schemas.Expense])
 async def read_expenses(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return await crud.get_expenses(db, user_id=current_user.id, skip=skip, limit=limit)
+
+@app.get("/tools/", response_model=list[schemas.Tool])
+async def read_tools(db: AsyncSession = Depends(get_db)):
+    return await crud.get_all_tools(db)
 
 import asyncio
 import json

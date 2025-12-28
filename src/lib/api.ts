@@ -1,4 +1,5 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8003";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+console.log("API Configured URL:", API_URL);
 
 export interface Expense {
   id: number;
@@ -15,6 +16,14 @@ export interface ExpenseCreate {
   date?: string;
 }
 
+export interface Tool {
+  id: number;
+  name: string;
+  title: string | null;
+  description: string;
+  is_active: number;
+}
+
 export const api = {
   getExpenses: async (token?: string, skip = 0, limit = 100): Promise<Expense[]> => {
     const headers: HeadersInit = {};
@@ -22,6 +31,15 @@ export const api = {
     
     const res = await fetch(`${API_URL}/expenses/?skip=${skip}&limit=${limit}`, { headers });
     if (!res.ok) throw new Error('Failed to fetch expenses');
+    return res.json();
+  },
+
+  getTools: async (token?: string): Promise<Tool[]> => {
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const res = await fetch(`${API_URL}/tools/`, { headers });
+    if (!res.ok) throw new Error('Failed to fetch tools');
     return res.json();
   },
 

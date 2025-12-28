@@ -27,6 +27,7 @@ class Tool(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
+    title = Column(String, index=True, nullable=True) # User-friendly name
     description = Column(String)
     python_code = Column(String)
     json_schema = Column(String) # Storing schema as JSON string

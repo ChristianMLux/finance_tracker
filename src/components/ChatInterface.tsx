@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { API_URL } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
 import { Input } from "./ui/Input"
@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useChatHistory } from "@/hooks/useChatHistory"
 import { v4 as uuidv4 } from 'uuid'
 import { PlusCircle, MessageSquarePlus } from "lucide-react"
+import { formatTitle } from "@/lib/utils"
 
 type Message = {
     role: 'user' | 'agent'
@@ -24,23 +25,60 @@ type Message = {
 
 interface ChatInterfaceProps {
     onAction?: (action: string) => void;
+    initialInput?: string;
 }
 
-export function ChatInterface({ onAction }: ChatInterfaceProps) {
+export function ChatInterface({ onAction, initialInput }: ChatInterfaceProps) {
     const [chatId, setChatId] = useState("default")
     const { messages: historyMessages, loading: historyLoading } = useChatHistory(chatId)
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const [statusLog, setStatusLog] = useState<string>("")
     const { token } = useAuth()
+
+    // effects
+    useEffect(() => {
+        if (initialInput) {
+            setInput(initialInput)
+        }
+    }, [initialInput])
     
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const [tools, setTools] = useState<{name: string, title?: string}[]>([])
+
+    // Fetch tools on mount and when dropdown opens
+    const fetchTools = async () => {
+        if (!token) return
+        try {
+            const res = await fetch(`${API_URL}/tools/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setTools(data)
+            }
+        } catch (e) {
+            console.error("Failed to fetch tools", e)
+        }
+    }
+
+    useEffect(() => {
+        fetchTools()
+    }, [token])
+
+    useEffect(() => {
+        if (isDropdownOpen) {
+            fetchTools()
+        }
+    }, [isDropdownOpen])
+
     const handleNewChat = () => {
         const newId = uuidv4()
         setChatId(newId)
         setPendingMessages([]) 
         setStatusLog("")
     }
-    
+
     // Map Firestore 'assistant' role to UI 'agent' role
     const messages = historyMessages.map(msg => ({
         ...msg,
@@ -49,8 +87,7 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
 
     const [pendingMessages, setPendingMessages] = useState<Message[]>([])
     
-    // Merge history with pending messages (deduplicated by content for simplicty, or just append pending if not in history)
-    // Robust Strategy: Filter out pending messages that have appeared in history
+    // Merge history with pending messages
     const mergedMessages = [
         ...messages, 
         ...pendingMessages.filter(pm => !messages.some(m => m.content === pm.content && m.role === pm.role))
@@ -122,6 +159,47 @@ export function ChatInterface({ onAction }: ChatInterfaceProps) {
                     <span className="text-xl">🤖</span>
                     Finance Assistant
                 </CardTitle>
+
+                <div className="flex-1 flex justify-center px-4">
+                    <div className="relative group">
+                        {/* Custom Dropdown Trigger */}
+                        <button 
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-foreground hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer flex items-center gap-2 font-medium focus:ring-1 focus:ring-primary/50 focus:outline-none min-w-[100px] justify-center"
+                        >
+                            <span>Tools</span>
+                            <span className="text-xs text-muted-foreground">▼</span>
+                        </button>
+
+                        {/* Custom Dropdown Menu */}
+                        {isDropdownOpen && (
+                            <>
+                                <div 
+                                    className="fixed inset-0 z-40" 
+                                    onClick={() => setIsDropdownOpen(false)}
+                                />
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-48 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 max-h-60 overflow-y-auto custom-scrollbar">
+                                    <div className="py-1">
+                                        {tools.map(tool => (
+                                            <button
+                                                key={tool.name}
+                                                onClick={() => {
+                                                    setInput(`I want to use the ${tool.title || formatTitle(tool.name)} tool.`);
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group/item"
+                                            >
+                                                <span className="opacity-0 group-hover/item:opacity-100 text-primary transition-opacity">➜</span>
+                                                <span className="truncate">{tool.title || formatTitle(tool.name)}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+
                 <Button 
                     variant="ghost" 
                     size="sm" 

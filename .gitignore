@@ -49,6 +49,7 @@ yarn-error.log*
 *.log
 
 .env
+.env.local
 
 # python
 __pycache__/

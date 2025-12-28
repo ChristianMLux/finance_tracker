@@ -93,8 +93,60 @@ async def seed_data():
             print(f"Added: {description} (${amount}) - {date.date()}")
         
         await db.commit()
+
+async def seed_tools():
+    # Helper to seed tools if they don't exist
+    async with AsyncSessionLocal() as db:
+        # Check if tools exist
+        result = await db.execute(select(models.Tool))
+        tools = result.scalars().all()
+        
+        if tools:
+            print("Tools already seeded.")
+            return
+
+        print("Seeding tools...")
+        
+        finance_tools = [
+            {
+                "name": "get_expenses",
+                "title": "Expense Tracker",
+                "description": "Analyze your spending habits and view expense history.",
+                "python_code": "# Native tool",
+                "is_active": 1
+            },
+            {
+                "name": "add_expense",
+                "title": "Quick Add",
+                "description": "Quickly add a new expense to your log.",
+                "python_code": "# Native tool",
+                "is_active": 1
+            },
+            {
+                "name": "loan_calculator",
+                "title": "Loan Calculator",
+                "description": "Calculate monthly payments and amortization schedules.",
+                "python_code": "# Dynamic tool placeholder",
+                "is_active": 1
+            }
+        ]
+
+        for tool_data in finance_tools:
+            tool = models.Tool(**tool_data)
+            db.add(tool)
+        
+        await db.commit()
+        print("Tools seeded successfully!")
     
     print("\nSeeding complete!")
+
+async def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "tools_only":
+        await seed_tools()
+    else:
+        # Default behavior (interactive expense seeding + tools)
+        await seed_data()
+        await seed_tools()
 
 if __name__ == "__main__":
     # Windows-specific fix for asyncio event loop policy if needed, 
@@ -103,6 +155,6 @@ if __name__ == "__main__":
     
     # Run the seed function
     try:
-        asyncio.run(seed_data())
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\nOperation cancelled.")
