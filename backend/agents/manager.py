@@ -84,7 +84,7 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
         
         try:
             response = await client.chat.completions.create(
-                model=os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp"),
+                model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message}
@@ -217,7 +217,7 @@ Extract the arguments for this tool from the message.
 Return ONLY JSON. If no arguments are needed, return {{}}.
 """
             extraction = await client.chat.completions.create(
-                model=os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp"),
+                model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
                 messages=[{"role": "user", "content": extraction_prompt}],
                 response_format={"type": "json_object"}
             )
@@ -327,7 +327,7 @@ Please answer the user's question using the result. Act as a Financial Advisor.
 5. **No Fake Precision**: Round abstract sentiment scores to 2 decimal places (e.g. 0.09). Do not use 4+ decimals.
 """
                     final_response = await client.chat.completions.create(
-                        model=os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp"),
+                        model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
                         messages=[{"role": "user", "content": explanation_prompt}]
                     )
                     final_response_content = final_response.choices[0].message.content

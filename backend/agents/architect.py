@@ -9,7 +9,7 @@ class ArchitectAgent(BaseAgent):
             base_url="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY"),
         )
-        self.model = os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp")
+        self.model = os.getenv("LLM_MODEL", "google/gemini-3-flash-preview")
 
     async def generate_tool(self, requirement: str) -> dict:
         system_prompt = """You are a Senior Python Financial Architect.

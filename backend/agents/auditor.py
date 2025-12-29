@@ -17,7 +17,7 @@ class AuditorAgent(BaseAgent):
             base_url="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY"),
         )
-        self.model = os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp")
+        self.model = os.getenv("LLM_MODEL", "google/gemini-3-flash-preview")
 
     async def semantic_review(self, code: str, name: str) -> bool:
         """
@@ -50,7 +50,7 @@ If invalid, return JSON: {{"approved": false, "reason": "..."}}
         try:
             prompt = system_prompt.format(code=code)
             response = await self.client.chat.completions.create(
-                model=os.getenv("LLM_MODEL", "google/gemini-2.0-flash-exp"),
+                model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
                 messages=[
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": f"Audit this tool: {name}\n\n{code}"}
