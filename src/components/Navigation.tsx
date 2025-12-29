@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
-import { ChevronLeft, ChevronRight, LayoutDashboard, CreditCard, PenTool, Settings, LogOut } from "lucide-react"
+import { ChevronLeft, ChevronRight, LayoutDashboard, CreditCard, PenTool, Settings, LogOut, LogIn } from "lucide-react"
 
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Button } from "./ui/Button"
@@ -22,7 +22,9 @@ interface NavigationProps {
 
 export function Navigation({ isCollapsed = false, toggleCollapse }: NavigationProps) {
   const pathname = usePathname()
-  const { userData, signOut } = useAuth()
+  const router = useRouter()
+  const { user, userData, signOut } = useAuth()
+
 
   return (
     <>
@@ -110,17 +112,17 @@ export function Navigation({ isCollapsed = false, toggleCollapse }: NavigationPr
                 )}
             </div>
 
-            {/* Logout */}
+            {/* Auth Action */}
              <button 
-                onClick={() => signOut()} 
+                onClick={() => user ? signOut() : router.push('/login')} 
                 className={`
                     w-full text-xs text-left text-muted-foreground hover:text-destructive transition-colors flex items-center gap-2 pl-1
                     ${isCollapsed ? 'justify-center pl-0' : ''}
                 `}
-                title="Sign Out"
+                title={user ? "Sign Out" : "Sign In"}
              >
-                <LogOut className="w-4 h-4" /> 
-                {!isCollapsed && <span>Sign Out</span>}
+                {user ? <LogOut className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
+                {!isCollapsed && <span>{user ? "Sign Out" : "Sign In"}</span>}
              </button>
         </div>
       </nav>
@@ -133,7 +135,18 @@ export function Navigation({ isCollapsed = false, toggleCollapse }: NavigationPr
             </div>
             <span className="text-lg font-bold">Finance</span>
          </div>
-         <ThemeToggle />
+         <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => user ? signOut() : router.push('/login')}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                aria-label={user ? "Sign Out" : "Sign In"}
+            >
+                {user ? <LogOut className="w-5 h-5" /> : <LogIn className="w-5 h-5" />}
+            </Button>
+         </div>
       </nav>
 
         {/* Mobile Bottom Bar */}
