@@ -52,7 +52,7 @@ export function ExpenseForm({ onExpenseAdded, onSuccess }: ExpenseFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <label htmlFor="amount" className="text-xs font-medium text-gray-200 ml-1">Amount</label>
+                    <label htmlFor="amount" className="text-xs font-medium text-muted-foreground ml-1">Amount</label>
                     <div className="relative">
                         <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
                         <Input 
@@ -68,7 +68,7 @@ export function ExpenseForm({ onExpenseAdded, onSuccess }: ExpenseFormProps) {
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <label htmlFor="category" className="text-xs font-medium text-gray-200 ml-1">Category</label>
+                    <label htmlFor="category" className="text-xs font-medium text-muted-foreground ml-1">Category</label>
                     <Input 
                         id="category"
                         placeholder="e.g. Food" 
@@ -87,7 +87,7 @@ export function ExpenseForm({ onExpenseAdded, onSuccess }: ExpenseFormProps) {
                 </div>
             </div>
             <div className="space-y-2">
-                <label htmlFor="description" className="text-xs font-medium text-gray-200 ml-1">Description</label>
+                <label htmlFor="description" className="text-xs font-medium text-muted-foreground ml-1">Description</label>
                 <Input 
                     id="description"
                     placeholder="What did you buy?" 

@@ -78,7 +78,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-4xl mx-auto">
+        <div className="space-y-8 animate-fade-in max-w-7xl">
              <div>
                 <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
                 <p className="text-muted-foreground">Manage your application preferences.</p>

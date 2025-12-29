@@ -211,9 +211,9 @@ export function ChatInterface({ initialInput }: ChatInterfaceProps) {
                 </Button>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-                <div className="flex-1 overflow-y-auto space-y-4 p-4 scroll-smooth">
+                <div className="flex-1 overflow-y-auto space-y-4 p-4 pb-36 scroll-smooth">
                     {mergedMessages.length === 0 && (
-                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50 space-y-2">
+                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-2 opacity-50">
                             <span className="text-4xl">💬</span>
                             <p>Ask me anything about your finances!</p>
                             {chatId !== 'default' && <p className="text-xs">Chat ID: {chatId.slice(0,8)}...</p>}
@@ -283,17 +283,43 @@ export function ChatInterface({ initialInput }: ChatInterfaceProps) {
                         </div>
                     )}
                 </div>
-                <div className="p-4 bg-background/50 backdrop-blur-sm border-t border-white/5">
-                    <form onSubmit={handleSend} className="flex gap-2">
-                        <Input 
+
+                {/* Floating Input Area */}
+                <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-3 z-20">
+                    {/* Quick Suggestions */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 thin-scrollbar mask-gradient-right">
+                        {[
+                            "Analyze my spending", 
+                            "Show me my expenses pie chart", 
+                            "Convert 100 EUR to USD", 
+                            "Forecast my savings"
+                        ].map((action) => (
+                            <button
+                                key={action}
+                                onClick={() => setInput(action)}
+                                className="whitespace-nowrap px-4 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary border border-transparent text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
+                            >
+                                {action}
+                            </button>
+                        ))}
+                    </div>
+
+                    <form onSubmit={handleSend} className="relative flex items-center gap-2 bg-background/80 backdrop-blur-xl border border-white/10 p-1.5 rounded-full shadow-lg transition-all focus-within:border-white/30 focus-within:bg-background/90 focus-within:shadow-xl hover:border-white/20">
+                        <input 
                             value={input} 
                             onChange={(e) => setInput(e.target.value)} 
-                            placeholder="Type a message..." 
+                            placeholder="Ask about your finances..." 
                             disabled={loading}
-                            className="bg-background/80 border-white/10"
+                            className="flex-1 bg-transparent w-full border-none outline-none shadow-none ring-0 focus:ring-0 px-4 h-10 text-sm placeholder:text-muted-foreground/50 text-foreground"
                         />
-                        <Button type="submit" disabled={loading} size="icon" className="w-12 shrink-0" aria-label="Send message">
-                            ➤
+                        <Button 
+                            type="submit" 
+                            disabled={loading || !input.trim()} 
+                            size="icon" 
+                            className="!rounded-full w-10 h-10 shrink-0 bg-primary text-primary-foreground hover:opacity-90 transition-transform active:scale-95 shadow-md"
+                            aria-label="Send message"
+                        >
+                            {loading ? <span className="animate-spin text-xs">⏳</span> : "➤"}
                         </Button>
                     </form>
                 </div>

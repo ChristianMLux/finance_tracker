@@ -1,18 +1,16 @@
 import firebase_admin
 from firebase_admin import firestore
 import logging
+import os
 from datetime import datetime
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 class ChatService:
-import os
 
     def __init__(self):
         try:
-            # We are now running in the same project (fintracker-482613), so default credentials work automatically.
-            # We still allow an override via env var if needed.
             project_id = os.getenv("NEXT_PUBLIC_FIREBASE_PROJECT_ID")
             if project_id:
                 self.db = firestore.client(project=project_id)

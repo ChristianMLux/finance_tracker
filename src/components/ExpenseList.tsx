@@ -66,9 +66,10 @@ export function ExpenseList({ expenses = [] }: ExpenseListProps) {
                             className="max-w-xs h-10"
                         />
                         <select 
-                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-muted/50 transition-colors"
                             value={sortOption}
                             onChange={(e) => setSortOption(e.target.value as SortOption)}
+                            aria-label="Sort expenses"
                         >
                             <option value="date-desc">Newest</option>
                             <option value="date-asc">Oldest</option>

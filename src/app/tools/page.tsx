@@ -27,9 +27,9 @@ export default function ToolsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-8">
+    <div className="max-w-7xl space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-4xl font-display font-bold tracking-tight text-foreground">
+        <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">
           Tools & Agents
         </h1>
         <p className="text-muted-foreground mt-1">

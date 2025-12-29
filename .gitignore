@@ -14,11 +14,7 @@
 /coverage
 
 # task
-/public/SOT_FINANCE_TRACKER
-/public/HIRING_TASK_FULLSTACK_DEVELOPER_ChristianLux_TASK_A.txt
-/public/Dynamic Tool Retrieval via MCP.md
-/public/Technische Roadmap Finance Tracker.md
-/public/feature_plan_dynamic_charts.md
+/tasks
 firestore.rules
 
 # Binaries and large files

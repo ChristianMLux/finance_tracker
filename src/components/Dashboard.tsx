@@ -6,6 +6,7 @@ import AllocationChart from "@/components/dashboard/AllocationChart";
 import CashflowChart from "@/components/dashboard/CashflowChart";
 import { API_URL } from "@/lib/api";
 import { PieChart as PieIcon, Activity } from "lucide-react";
+import { Card } from "@/components/ui/Card";
 
 interface DashboardProps {
     refreshTrigger?: number;
@@ -68,7 +69,7 @@ export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
 
     return (
         <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <Card>
                 <div className="p-6 flex flex-col gap-1">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                         <PieIcon className="h-4 w-4" /> Expense Allocation
@@ -78,9 +79,9 @@ export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
                 <div className="p-6 pt-0 pl-0">
                     <AllocationChart data={allocationData} />
                 </div>
-            </div>
+            </Card>
 
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <Card>
                 <div className="p-6 flex flex-col gap-1">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Activity className="h-4 w-4" /> Monthly Cashflow
@@ -90,7 +91,7 @@ export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
                 <div className="p-6 pt-0 pl-0">
                     <CashflowChart data={cashflowData} />
                 </div>
-            </div>
+            </Card>
         </div>
     );
 }

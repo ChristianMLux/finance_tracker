@@ -28,7 +28,7 @@ export default function ExpensesPage() {
     }, [user, token, fetchExpenses])
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">
+        <div className="space-y-8 animate-fade-in max-w-7xl">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                  <div>
                     <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
