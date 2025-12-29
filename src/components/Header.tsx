@@ -2,7 +2,6 @@
 
 import { useAuth } from "@/context/AuthContext"
 import { useEffect, useState } from "react"
-import { TrendingUp, Bell } from "lucide-react"
 
 export function Header() {
     const { userData } = useAuth()
@@ -25,7 +24,7 @@ export function Header() {
                     {greeting}, {userName}
                 </h1>
                 <div className="flex items-center gap-2 mt-1 text-muted-foreground text-sm">
-                   <span>Here's your financial overview today.</span>
+                   <span>Here&apos;s your financial overview today.</span>
                 </div>
             </div>
         </div>

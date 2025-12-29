@@ -99,7 +99,7 @@ export function Navigation({ isCollapsed = false, toggleCollapse }: NavigationPr
 
             {/* Profile */}
             <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} transition-all`}>
-                <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0 flex items-center justify-center text-xs uppercase cursor-default" title={(userData as any)?.email || "User"}>
+                <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0 flex items-center justify-center text-xs uppercase cursor-default" title={(userData as { email?: string })?.email || "User"}>
                     {(userData?.full_name as string) ? (userData?.full_name as string)?.[0] : ((userData?.email as string)?.[0] || "U")}
                 </div>
                 {!isCollapsed && (

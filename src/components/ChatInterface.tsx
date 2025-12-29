@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { API_URL } from "@/lib/api"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/Card"
-import { Input } from "./ui/Input"
+
 import { Button } from "./ui/Button"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
