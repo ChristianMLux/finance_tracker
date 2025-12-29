@@ -220,8 +220,50 @@ export function ChatInterface({ initialInput }: ChatInterfaceProps) {
                         </div>
                     )}
                     {mergedMessages.map((msg, i) => {
-                        // Skip rendering if message is empty and has no component (avoids empty bubbles)
-                        if (!msg.content && !msg.component) return null;
+                        // Normalize component data if present
+                        let serializedComponent = msg.component
+                        if (serializedComponent) {
+                             // Handle legacy "component" key instead of "type"
+                             // Cast to unknown first then to a type that allows 'component' property
+                             const legacyComponent = serializedComponent as unknown as { component?: string; type?: string; data?: unknown };
+                             if (legacyComponent.component && !legacyComponent.type) {
+                                 serializedComponent = {
+                                     ...serializedComponent,
+                                     type: legacyComponent.component
+                                 }
+                             }
+                             
+                             // Handle nested chart metadata (fix for agent returning data inside series)
+                             if (serializedComponent.type === 'chart' && serializedComponent.data) {
+                                  // Define a type for the potential structure we are fixing
+                                  type ChartDataPayload = {
+                                      title?: string;
+                                      type?: string; 
+                                      xAxisKey?: string;
+                                      series?: Array<{
+                                          title?: string;
+                                          type?: string;
+                                          xAxisKey?: string;
+                                      }>;
+                                  };
+
+                                  const chartData = serializedComponent.data as ChartDataPayload;
+                                  
+                                  // Check if title/xAxisKey/type are missing at root but present in first series item
+                                  if (!chartData.title && chartData.series?.[0]?.title) {
+                                       chartData.title = chartData.series[0].title
+                                  }
+                                  if (!chartData.type && chartData.series?.[0]?.type) {
+                                       chartData.type = chartData.series[0].type
+                                  }
+                                  if (!chartData.xAxisKey && chartData.series?.[0]?.xAxisKey) {
+                                       chartData.xAxisKey = chartData.series[0].xAxisKey
+                                  }
+                             }
+                        }
+
+                        // Skip rendering if completely empty
+                        if (!msg.content && !serializedComponent) return null;
                         
                         return (
                         <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
@@ -232,13 +274,8 @@ export function ChatInterface({ initialInput }: ChatInterfaceProps) {
                                     ? 'bg-destructive/10 text-destructive border border-destructive/20 rounded-bl-none' 
                                     : 'bg-muted text-foreground rounded-bl-none'
                             }`}>
-                                {msg.component ? (
-                                    msg.component.type === 'chart' ? (
-                                        <DynamicChart data={msg.component.data as ChartData} />
-                                    ) : (
-                                        <div className="text-sm text-muted-foreground italic">[Unsupported Component: {msg.component.type}]</div>
-                                    )
-                                ) : msg.role === 'agent' ? (
+                                {/* Render Text Content */}
+                                {msg.role === 'agent' ? (
                                     <div className="prose prose-sm dark:prose-invert max-w-none break-words">
                                         <ReactMarkdown 
                                             remarkPlugins={[remarkGfm]}
@@ -271,6 +308,21 @@ export function ChatInterface({ initialInput }: ChatInterfaceProps) {
                                     </div>
                                 ) : (
                                     msg.content
+                                )}
+
+                                {/* Render Component if present */}
+                                {serializedComponent && (
+                                    <div className="mt-4 pt-4 border-t border-border/50">
+                                        {serializedComponent.type === 'chart' ? (
+                                            <DynamicChart data={serializedComponent.data as ChartData} />
+                                        ) : (
+                                            <div className="text-sm text-muted-foreground italic p-2 border border-border rounded">
+                                                [Unsupported Component: {serializedComponent.type}]
+                                                <br/>
+                                                <span className="text-xs opacity-70">Data: {JSON.stringify(serializedComponent.data).slice(0, 50)}...</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>

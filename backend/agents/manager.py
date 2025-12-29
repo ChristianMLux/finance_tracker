@@ -303,7 +303,7 @@ print(json.dumps(run(**filtered_args)))
                         result_json = json.loads(raw_result)
                         if isinstance(result_json, dict) and "_visualization" in result_json:
                             viz_data = result_json.pop("_visualization")
-                            viz_payload = {"component": "chart", "data": viz_data}
+                            viz_payload = {"type": "chart", "data": viz_data}
                             if status_callback:
                                 await status_callback("ui_evt", viz_payload)
                             
