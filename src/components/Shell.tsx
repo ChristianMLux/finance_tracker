@@ -27,7 +27,7 @@ export function Shell({ children }: ShellProps) {
                     transition-all duration-300 ease-in-out
                     ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'}
                     min-h-screen
-                    p-4 pb-24 lg:px-8 lg:pt-6.5
+                    p-4 pt-20 pb-24 lg:px-8 lg:pt-8
                 `}
             >
                 <div className="w-full">

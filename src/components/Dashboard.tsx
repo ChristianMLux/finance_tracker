@@ -60,8 +60,21 @@ export function Dashboard({ refreshTrigger = 0 }: DashboardProps) {
         }
     }, [authLoading, token, refreshTrigger, fetchData]);
 
-    if (authLoading || loading) return <div className="h-48 flex items-center justify-center">Loading stats...</div>;
-    if (!user) return null;
+    // Auth loading state
+    if (authLoading) return null;
+
+    // Not logged in state
+    if (!user) {
+        return (
+            <div className="h-48 flex flex-col items-center justify-center gap-2 text-muted-foreground animate-fade-in">
+                <span className="text-2xl">🔒</span>
+                <span>Log in to see your data...</span>
+            </div>
+        );
+    }
+
+    // Data loading state
+    if (loading) return <div className="h-48 flex items-center justify-center text-muted-foreground animate-pulse">Loading stats...</div>;
 
     if (error) {
         return <div className="text-sm text-destructive">{error}</div>;
