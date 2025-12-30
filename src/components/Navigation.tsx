@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { ChevronLeft, ChevronRight, LayoutDashboard, CreditCard, PenTool, Settings, LogOut, LogIn } from "lucide-react"
-import { formatTitle } from "@/lib/utils"
+
 
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Button } from "./ui/Button"

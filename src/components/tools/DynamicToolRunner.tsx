@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from "react"
 import { Play, Save, Loader2, AlertCircle, CheckCircle } from "lucide-react"
-import { DynamicChart } from "../DynamicChart"
+import { DynamicChart, ChartData } from "../DynamicChart"
 import { Button } from "../ui/Button"
 import { Card, CardContent } from "../ui/Card"
 import { formatTitle } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { ToolChatInterface } from "./ToolChatInterface"
-import { MessageSquare } from "lucide-react"
 
 interface Tool {
     name: string
@@ -20,16 +19,23 @@ interface Tool {
 
 interface DynamicToolRunnerProps {
     tool: Tool
-    initialData?: Record<string, any>
+    initialData?: Record<string, unknown>
 }
 
 // Simple AutoForm Component
-const AutoForm = ({ schema, value, onChange }: { schema: any, value: any, onChange: (val: any) => void }) => {
+interface SchemaProperty {
+    type: string
+    title?: string
+    description?: string
+    enum?: string[]
+}
+
+const AutoForm = ({ schema, value, onChange }: { schema: { properties?: Record<string, SchemaProperty>, required?: string[] }, value: Record<string, unknown>, onChange: (val: Record<string, unknown>) => void }) => {
     if (!schema || !schema.properties) return <div className="text-muted-foreground italic">No parameters required.</div>
 
     return (
         <div className="space-y-4">
-            {Object.entries(schema.properties).map(([key, prop]: [string, any]) => {
+            {Object.entries(schema.properties).map(([key, prop]) => {
                 const fieldType = prop.type
                 const isRequired = schema.required?.includes(key)
                 const title = prop.title || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -45,7 +51,7 @@ const AutoForm = ({ schema, value, onChange }: { schema: any, value: any, onChan
                             <input
                                 type="text"
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                value={value[key] || ""}
+                                value={(value[key] as string) || ""}
                                 onChange={(e) => onChange({ ...value, [key]: e.target.value })}
                                 placeholder={`Enter ${title}...`}
                             />
@@ -55,7 +61,7 @@ const AutoForm = ({ schema, value, onChange }: { schema: any, value: any, onChan
                             <input
                                 type="number"
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                value={value[key] || ""}
+                                value={(value[key] as number) || ""}
                                 onChange={(e) => onChange({ ...value, [key]: parseFloat(e.target.value) })}
                                 placeholder="0.00"
                             />
@@ -64,7 +70,7 @@ const AutoForm = ({ schema, value, onChange }: { schema: any, value: any, onChan
                         {prop.enum && (
                             <select
                                 className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
-                                value={value[key] || ""}
+                                value={(value[key] as string) || ""}
                                 onChange={(e) => onChange({ ...value, [key]: e.target.value })}
                             >
                                 <option value="" disabled>Select option...</option>
@@ -78,7 +84,7 @@ const AutoForm = ({ schema, value, onChange }: { schema: any, value: any, onChan
                             <div className="flex items-center space-x-2">
                                 <input 
                                     type="checkbox" 
-                                    checked={value[key] || false}
+                                    checked={(value[key] as boolean) || false}
                                     onChange={(e) => onChange({ ...value, [key]: e.target.checked })}
                                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                 />
@@ -97,9 +103,9 @@ export function DynamicToolRunner({ tool, initialData = {} }: DynamicToolRunnerP
     const schema = typeof tool.json_schema === "string" ? JSON.parse(tool.json_schema) : tool.json_schema
     const { token } = useAuth()
 
-    const [formData, setFormData] = useState<Record<string, any>>(initialData)
+    const [formData, setFormData] = useState<Record<string, unknown>>(initialData)
     const [loading, setLoading] = useState(false)
-    const [result, setResult] = useState<any>(null)
+    const [result, setResult] = useState<{ output: unknown; visualization?: unknown; logs?: string[] } | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [logs, setLogs] = useState<string[]>([])
     const [isSaved, setIsSaved] = useState(tool.status === "saved")
@@ -140,8 +146,8 @@ export function DynamicToolRunner({ tool, initialData = {} }: DynamicToolRunnerP
             const data = await res.json()
             setResult(data)
             if (data.logs) setLogs(data.logs)
-        } catch (err: any) {
-            setError(err.message)
+        } catch (err) {
+            setError((err as Error).message)
         } finally {
             setLoading(false)
         }
@@ -252,7 +258,7 @@ export function DynamicToolRunner({ tool, initialData = {} }: DynamicToolRunnerP
                             <div className="flex-1 space-y-4">
                                 {result.visualization ? (
                                     <div className="w-full h-[300px]">
-                                        <DynamicChart data={result.visualization} />
+                                        <DynamicChart data={result.visualization as ChartData} />
                                     </div>
                                 ) : null}
                                 

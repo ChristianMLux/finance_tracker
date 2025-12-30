@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { API_URL } from "@/lib/api"
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card"
+import { Card, CardContent } from "../ui/Card"
 
 import { Button } from "../ui/Button"
 import ReactMarkdown from 'react-markdown'
@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useChatHistory } from "@/hooks/useChatHistory"
 import { v4 as uuidv4 } from 'uuid'
 import { MessageSquarePlus } from "lucide-react"
-import { formatTitle } from "@/lib/utils"
+
 
 type Message = {
     role: 'user' | 'agent'
@@ -36,20 +36,8 @@ export function ToolChatInterface({ initialPrompt }: ToolChatInterfaceProps) {
     const { token } = useAuth()
     const hasInitialTriggered = useRef(false)
 
-    // Auto-send initial prompt if provided and not yet triggered
-    useEffect(() => {
-        if (initialPrompt && !hasInitialTriggered.current && token) {
-             hasInitialTriggered.current = true
-             handleSend(undefined, initialPrompt, { hidden: true })
-        }
-    }, [initialPrompt, token])
 
-    const handleNewChat = () => {
-        const newId = uuidv4()
-        setChatId(newId)
-        setPendingMessages([]) 
-        setStatusLog("")
-    }
+
 
     // Map Firestore 'assistant' role to UI 'agent' role
     const messages = historyMessages.map(msg => ({
@@ -68,7 +56,14 @@ export function ToolChatInterface({ initialPrompt }: ToolChatInterfaceProps) {
         !msg.content.includes("Here is the financial data")
     )
 
-    const handleSend = async (e?: React.FormEvent, overrideInput?: string, options: { hidden?: boolean } = {}) => {
+    const handleNewChat = () => {
+        const newId = uuidv4()
+        setChatId(newId)
+        setPendingMessages([]) 
+        setStatusLog("")
+    }
+
+    const handleSend = useCallback(async (e?: React.FormEvent, overrideInput?: string, options: { hidden?: boolean } = {}) => {
         if (e) e.preventDefault()
         const messageToSend = overrideInput || input
         if (!messageToSend.trim()) return
@@ -125,7 +120,15 @@ export function ToolChatInterface({ initialPrompt }: ToolChatInterfaceProps) {
             setLoading(false)
             setStatusLog("") 
         }
-    }
+    }, [input, token, chatId])
+
+    // Auto-send initial prompt if provided and not yet triggered
+    useEffect(() => {
+        if (initialPrompt && !hasInitialTriggered.current && token) {
+             hasInitialTriggered.current = true
+             handleSend(undefined, initialPrompt, { hidden: true })
+        }
+    }, [initialPrompt, token, handleSend])
 
     return (
         <Card className="h-full flex flex-col glass-card border-none shadow-none bg-transparent">

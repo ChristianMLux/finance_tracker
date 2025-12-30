@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+"use client";
+
 import { useRouter } from "next/navigation";
 import { Tool } from "@/lib/api";
 import { formatTitle } from "@/lib/utils";
@@ -8,7 +9,7 @@ import { useTools } from "@/hooks/useTools";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 
 export default function ToolsPage() {
-  const { tools, loading } = useTools();
+  const { tools } = useTools();
   const router = useRouter();
 
   // Helper to split tools
@@ -22,8 +23,8 @@ export default function ToolsPage() {
                 isInteractive = true;
             }
         } else if (typeof tool.json_schema === 'object' && tool.json_schema !== null) {
-             const schema = tool.json_schema as any;
-             if (schema.properties && Object.keys(schema.properties).length > 0) {
+             const schema = tool.json_schema as { properties?: unknown };
+             if (schema.properties && Object.keys(schema.properties as object).length > 0) {
                 isInteractive = true;
             }
         }
@@ -50,7 +51,7 @@ export default function ToolsPage() {
                 isAgent = false;
             }
         }
-    } catch (e) {
+    } catch {
         console.warn("Failed to parse schema for tool check", tool.name);
     }
 
