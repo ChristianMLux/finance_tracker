@@ -4,9 +4,11 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { ChevronLeft, ChevronRight, LayoutDashboard, CreditCard, PenTool, Settings, LogOut, LogIn } from "lucide-react"
+import { formatTitle } from "@/lib/utils"
 
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Button } from "./ui/Button"
+import { useTools } from "@/hooks/useTools"
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -24,6 +26,10 @@ export function Navigation({ isCollapsed = false, toggleCollapse }: NavigationPr
   const pathname = usePathname()
   const router = useRouter()
   const { user, userData, signOut } = useAuth()
+  const { tools } = useTools()
+  
+  // Show up to 5 recently added/saved tools
+  const recentTools = tools.slice(0, 5)
 
 
   return (
@@ -82,6 +88,33 @@ export function Navigation({ isCollapsed = false, toggleCollapse }: NavigationPr
              )
           })}
         </div>
+
+        {/* Dynamic Tools Section */}
+        {recentTools.length > 0 && (
+             <div className={`space-y-1 ${isCollapsed ? 'hidden' : ''} animate-fade-in`}>
+                <div className="px-3 py-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
+                    Recent Tools
+                </div>
+                {recentTools.map(tool => (
+                    <Link
+                        key={tool.id}
+                        href={`/tools/${tool.name}`}
+                        className={`
+                            flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                            ${pathname === `/tools/${tool.name}` 
+                                ? "bg-primary/10 text-foreground" 
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            }
+                        `}
+                        title={tool.title || tool.name}
+                    >
+                        <PenTool className="w-4 h-4 flex-shrink-0" />
+                        <span className="whitespace-nowrap truncate">{tool.title || tool.name.replace(/_/g, ' ')}</span>
+                        {tool.status === 'saved' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+                    </Link>
+                ))}
+             </div>
+        )}
         
         {/* Footer Actions */}
         <div className="mt-auto pt-4 border-t border-border space-y-4">

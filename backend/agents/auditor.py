@@ -19,34 +19,52 @@ class AuditorAgent(BaseAgent):
         )
         self.model = os.getenv("LLM_MODEL", "google/gemini-3-flash-preview")
 
-    async def semantic_review(self, code: str, name: str) -> bool:
+    async def semantic_review(self, code: str, name: str) -> tuple[bool, str]:
         """
         Uses an LLM to review the code for financial logic and transparency.
         """
-        system_prompt = """You are a Senior Financial Auditor.
-Your job is to REJECT Python code if it violates these rules:
+        system_prompt = """You are a Senior Financial Auditor & QA Engineer.
+Your job is to REJECT Python code if it violates safety, logic, or financial correctness rules.
 
-1. **Transparency Missing**: The code MUST use `print()` to log assumptions (rates, constants) at the start.
-2. **Bad Financial Logic**: 
-   - No flat 10% weightings for portfolios (lazy).
-   - No naive linear extrapolations without caveats.
-   - Real estate calcs must mention maintenance/taxes.
-3. **Safety**: 
-   - `requests.get` to benign APIs IS ALLOWED (Fallback).
-   - Standard Libraries (`yfinance`, `duckduckgo-search`) ARE ALLOWED and PREFERRED.
-   - **Multi-Source Logic**: Using multiple sources (e.g. YFinance + DuckDuckGo) is ENCOURAGED for accuracy.
-   - REJECT malicious URLs.
-4. **Risk Profile**:
-   - If user is described as "Risk Averse", REJECT logic that suggests 100% equity/crypto speculation.
-   - EXCEPTION: "Hedging" strategies (Options for protection) ARE ALLOWED and encouraged for risk reduction.
+### AUDIT CATEOGRIES:
 
-Code:
-{code}
+1. **Logical Sanity Checks (CRITICAL)**:
+   - **Math Realism**: Validate growth rates. If $10k becomes >$100k in 5 years without high risk, REJECT.
+   - **Negative Net Worth Guard**: If a standard long-only investment strategy results in NEGATIVE net worth (e.g., -$4k), REJECT IMMEDITALEY. Investment values cannot drop below zero without leverage/shorting.
+   - **Unit Confusion**: Check for "8 vs 0.08" errors. If the code uses an input > 1.0 as a raw multiplier for interest, REJECT it and demand sanitization.
+   - **Negative Values**: Ensure assets don't become negative unless explicitly modeled (shorting/debt).
+   - **Fair Comparison**: In "Debt vs Invest" scenarios, ensure both strategies run for the SAME duration and account for the SAME starting capital.
+   - **Smoke Tests (The "Sniff" Test)**:
+        - **Total Interest Ceiling**: The financial benefit of paying off a debt CANNOT exceed the Total Interest payable on that debt.
+        - **Rate Arbitrage**: If `(Market Return * (1 - TaxRate)) > Loan Rate`, then the "Invest" strategy MUST win mathematically.
+        - **Spread Integrity (CRITICAL)**: Check the magnitude of the win.
+            - Calculate simple spread profit: `TheoreticProfit = Principal * abs(NetInvestRate - LoanRate) * LoanTerm`.
+            - If the tool's reported `Difference` is > 5x `TheoreticProfit`, it is a **Compounding Hallucination**.
+            - *Example*: On $25k loan, 2 years, with 0.3% spread (6.8% vs 6.5%). Max divergence should be ~$300-$500. If tool claims $9,000 difference, **REJECT IT**.
+        - **Delta Sanity**: For short loan terms (<3 years), the difference between strategies typically cannot exceed 10% of the principal.
+        - **Day 0 Sanity Check**: At T=0 (or Year 1), the Net Worth difference between strategies MUST be negligible (< $1000). If Strategy B is "$7000 ahead" in Year 1, you failed to count the Cash Asset in Strategy A. **REJECT**.
+2. **Transparency & Logging**:
+   - The code MUST use `print()` to log every assumption (Tax Rate, Inflation) at the start.
+   - "Hidden Math" is forbidden.
 
+3. **Bad Financial Logic**:
+   - **Lazy Portfolios**: Reject flat 1/N weightings (e.g. "25% in each of 4 random stocks") unless requested.
+   - **Compounding**: Reject Simple Interest `P*(1+rt)` for multi-year periods. Mst use `P*(1+r)**t`.
+
+4. **Safety & Security**:
+   - `requests.get` is allowed for benign APIs.
+   - REJECT malicious URLs or file operations outside the sandbox.
+   - **Dependencies**: `yfinance`, `duckduckgo-search` are PREFERRED.
+
+5. **Risk Profile Compliance**:
+   - If user is "Risk Averse", REJECT logic that suggests >50% allocation to Crypto or unchecked Equities.
+
+### OUTPUT FORMAT:
 Analyze the code.
 If valid, return JSON: {{"approved": true}}
-If invalid, return JSON: {{"approved": false, "reason": "..."}}
+If invalid, return JSON: {{"approved": false, "reason": "LOGIC ERROR: [Explanation]... FIX: [Suggestion]..."}}
 """
+
         try:
             prompt = system_prompt.format(code=code)
             response = await self.client.chat.completions.create(
@@ -59,14 +77,15 @@ If invalid, return JSON: {{"approved": false, "reason": "..."}}
             )
             result = json.loads(response.choices[0].message.content)
             if not result.get("approved"):
-                logger.warning(f"Semantic Audit Failed for {name}: {result.get('reason')}")
-                return False
-            return True
+                reason = result.get("reason", "Unknown policy violation")
+                logger.warning(f"Semantic Audit Failed for {name}: {reason}")
+                return False, reason
+            return True, ""
         except Exception as e:
             logger.error(f"Semantic review error: {e}")
-            return True # Fail open if LLM fails, relying on Sandbox safety
+            return True, "" # Fail open if LLM fails, relying on Sandbox safety
 
-    async def validate_tool(self, tool_data: dict) -> bool:
+    async def validate_tool(self, tool_data: dict) -> tuple[bool, str]:
         """
         Validates the tool by running it in a sandbox.
         """
@@ -75,13 +94,14 @@ If invalid, return JSON: {{"approved": false, "reason": "..."}}
         deps = tool_data.get("dependencies", [])
 
         if not code:
-            return False
+            return False, "No code provided"
 
         logger.info(f"Auditing tool: {name}")
 
         # 1. Semantic Review (LLM)
-        if not await self.semantic_review(code, name):
-            return False
+        approved, critique = await self.semantic_review(code, name)
+        if not approved:
+            return False, critique
 
         # 2. Syntax & Runtime Check (Sandbox)
         try:
@@ -94,7 +114,7 @@ If invalid, return JSON: {{"approved": false, "reason": "..."}}
                         install_result = sandbox.commands.run(f"pip install -q {dep}")
                         if install_result.exit_code != 0:
                             logger.error(f"Failed to install dependency {dep}: {install_result.stderr}")
-                            return False
+                            return False, f"Dependency install failed: {install_result.stderr}"
 
                 # 3. Define the code
                 sandbox.run_code(code)
@@ -103,12 +123,12 @@ If invalid, return JSON: {{"approved": false, "reason": "..."}}
                 check_result = sandbox.run_code("if 'run' not in locals(): raise Exception('Function run not defined')")
                 if check_result.error:
                      logger.error(f"Audit failed (Runtime): {check_result.error}")
-                     return False
+                     return False, f"Runtime error: {check_result.error}"
                 
-                return True
+                return True, ""
         except Exception as e:
             logger.error(f"Sandbox execution failed: {e}")
-            return False
+            return False, f"Sandbox execution error: {str(e)}"
 
     async def process_message(self, message: str, context=None, status_callback=None) -> str:
         return "I verify code."

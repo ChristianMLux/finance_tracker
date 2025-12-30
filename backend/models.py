@@ -33,3 +33,5 @@ class Tool(Base):
     json_schema = Column(String) # Storing schema as JSON string
     dependencies = Column(String, default="[]") # Storing list of dependencies as JSON string
     is_active = Column(Integer, default=1) # 1 for active, 0 for inactive
+    status = Column(String, default="temporary") # temporary, saved, public
+    creator_id = Column(String, ForeignKey("users.id"), nullable=True)

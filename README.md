@@ -116,10 +116,12 @@ The system uses a multi-agent hierarchy to ensure safety and accuracy:
 
 1. **Manager Agent**: The central orchestrator. Classifies intent, manages **Persistent Context** via Firestore, and processes **Generative UI** events (`ui_evt`).
 2. **Architect Agent**: Writes high-quality, typed Python code to solve specific financial questions and generates structured data for visualizations.
-3. **Auditor Agent**: Performs a "Double Audit":
-   - **Semantic Review**: LLM-based check for financial soundness (diversification, tax awareness).
-   - **Runtime Validation**: Executes code in an E2B Sandbox to ensure it runs correctly before registration.
+3. **Auditor Agent**: Performs a **Triple-Layer Audit** before any code is saved:
+   - **Semantic Review**: Checks for "Financial Hallucinations" (e.g., negative net worth, unfair comparisons) using "Financial First Principles".
+   - **Security Audit**: Scans for malicious imports or file system abuse.
+   - **Runtime Validation**: Executes code in an E2B Sandbox to verify syntax and runtime stability.
 4. **Finance & Analytics Agents**: Handles core CRUD and SQL-based data aggregation for reporting.
+5. **Self-Correction Loop**: unique to this system, the **Manager Agent** acts as a supervisor. If the Auditor rejects a tool, the Manager parses the critique and **auto-retries** the Architect, forcing it to fix logic errors iteratively until standards are met.
 
 ## 🛡️ Security & Sandboxing
 

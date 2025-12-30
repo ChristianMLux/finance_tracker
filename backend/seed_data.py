@@ -141,6 +141,21 @@ async def seed_tools():
     print("\nSeeding complete!")
 
 async def main():
+    print(f"\n--- DATABASE SECURITY CHECK ---")
+    print(f"Target Database URL: {engine.url}")
+    
+    is_sqlite = "sqlite" in str(engine.url)
+    if not is_sqlite:
+        print("\nWARNING: You are NOT using the local SQLite database.")
+        print("This operation will modify the REMOTE/PRODUCTION database.")
+        confirm = input("Are you sure you want to proceed? (type 'yes' to continue): ")
+        if confirm.lower() != "yes":
+            print("Operation aborted.")
+            return
+    else:
+        print("Confirmed local SQLite database.")
+    print("-------------------------------\n")
+
     if len(sys.argv) > 1 and sys.argv[1] == "tools_only":
         await seed_tools()
     else:

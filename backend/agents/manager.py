@@ -9,13 +9,16 @@ from .finance import FinanceAgent
 from .currency import CurrencyAgent
 from .architect import ArchitectAgent
 from .auditor import AuditorAgent
+from .interpreter import InterpreterAgent
 from backend import crud, models
 from backend.database import AsyncSessionLocal
 from backend.services.chat_service import chat_service
 
 logger = logging.getLogger(__name__)
 
+load_dotenv(".env.local")
 load_dotenv()
+
 
 client = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -28,6 +31,7 @@ class ManagerAgent(BaseAgent):
         self.currency_agent = CurrencyAgent()
         self.architect_agent = ArchitectAgent()
         self.auditor_agent = AuditorAgent()
+        self.interpreter_agent = InterpreterAgent()
 
     async def _classify_intent(self, message: str, history: list = [], status_callback=None) -> str:
         system_prompt = """Classify the user's intent into one of the following categories:
@@ -98,8 +102,6 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             return is_safe
         except Exception as e:
             logger.error(f"Safety check failed: {e}")
-        except Exception as e:
-            logger.error(f"Safety check failed: {e}")
             # Fail open to ensure user experience isn't blocked by transient API errors
             return True
 
@@ -130,6 +132,17 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
         if not is_safe:
             logger.warning(f"Safety check rejected: {message}")
             return "I cannot fulfill this request. I am a Financial Assistant, and this query seems unrelated to finance or potentially unsafe."
+
+        # SHORTCUT: Detection of Automated Analysis Requests
+        # If the message starts with our known preamble, skip classification and go straight to analysis.
+        if message.strip().startswith("Here is the financial data") or "Please analyze this data" in message:
+             logger.info("Detected automated analysis request. Routing to Interpreter Agent.")
+             if status_callback:
+                 await status_callback("log", "Routing to Interpreter Agent...")
+             
+             response = await self.interpreter_agent.process_message(message, status_callback=status_callback)
+             if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+             return response
 
         if status_callback:
             await status_callback("log", "Classifying Intent...")
@@ -174,22 +187,51 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
             if status_callback:
                 await status_callback("log", "Intent: New Tool Creation. Triggering Architect...")
             # 1. Generate
-            tool_data = await self.architect_agent.generate_tool(message)
-            if "error" in tool_data:
-                response = f"I tried to build a tool for that but failed: {tool_data['error']}"
-                if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
-                return response
+            # 1b. Generation Loop (Architect -> Auditor feedback)
+            max_retries = 3
+            attempt = 0
+            feedback = ""
+            is_valid = False
+            critique_reason = ""
             
-            # 2. Audit
-            logger.info(f"Auditing tool: {tool_data.get('name')}")
-            if status_callback:
-                await status_callback("log", f"Auditing tool: {tool_data.get('name')}")
-            is_valid = await self.auditor_agent.validate_tool(tool_data)
+            while attempt <= max_retries:
+                if feedback:
+                    prompt_with_feedback = f"{message}\n\n<agent_critique>\n{feedback}\n</agent_critique>"
+                    logger.info(f"Retrying Architect with feedback (Attempt {attempt})")
+                    if status_callback:
+                         await status_callback("log", f"Auditor rejected tool. Retrying Architect with feedback...")
+                else:
+                    prompt_with_feedback = message
+
+                tool_data = await self.architect_agent.generate_tool(prompt_with_feedback)
+                
+                if "error" in tool_data:
+                    logger.error(f"Architect error: {tool_data['error']}")
+                    if attempt == max_retries:
+                         response = f"I tried to build a tool for that but failed: {tool_data['error']}"
+                         if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+                         return response
+                    attempt += 1
+                    continue
+
+                # 2. Audit
+                logger.info(f"Auditing tool: {tool_data.get('name')}")
+                if status_callback:
+                    await status_callback("log", f"Auditing tool (Logic/Safety Check)...")
+                
+                is_valid, critique_reason = await self.auditor_agent.validate_tool(tool_data)
+                
+                if is_valid:
+                    break # Success!
+                
+                # Failed - Construct feedback
+                feedback = f"Your previous tool code was rejected by the Auditor.\nCritique: {critique_reason}\nFix: Address the critique and ensure mathematical correctness."
+                attempt += 1
             
             if not is_valid:
-                response = "I generated a tool to help with that, but it failed my security/correctness audit. Please try again or be more specific."
-                if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
-                return response
+                 response = f"I generated a tool to help with that, but it repeatedly failed my quality assurance audit.\n\nReason: {critique_reason}\n\nPlease try a slightly different request."
+                 if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response)
+                 return response
             
             # 3. Save to DB
             async with AsyncSessionLocal() as db:
@@ -202,6 +244,11 @@ Return EXACTLY 'SAFE' or 'UNSAFE'."""
                     db_tool_data = tool_data.copy()
                     if isinstance(db_tool_data.get("json_schema"), dict):
                         db_tool_data["json_schema"] = json.dumps(db_tool_data["json_schema"])
+                    
+                    if user_id:
+                        db_tool_data["creator_id"] = user_id
+                    db_tool_data["status"] = "temporary"
+
                     
                     await crud.create_tool(db, db_tool_data)
                     logger.info("Tool saved to database.")
@@ -223,125 +270,84 @@ Return ONLY JSON. If no arguments are needed, return {{}}.
             )
             args = json.loads(extraction.choices[0].message.content)
             
+            # --- ARGUMENT VALIDATION ---
+            required_fields = tool_data.get("json_schema", {}).get("required", [])
+            # Check for missing keys OR null values
+            missing_fields = [f for f in required_fields if f not in args or args[f] is None]
+            
+            if missing_fields:
+                logger.warning(f"Tool execution blocked. Missing args: {missing_fields}")
+                # Fallback response
+                readable_missing = ", ".join(missing_fields)
+                response = f"I have built the tool **{tool_data.get('title', tool_data['name'])}**, but I need more information to run it.\n\nPlease provide: **{readable_missing}**.\n\nAlternatively, you can input them manually below:"
+                response += f"\n\n[Open Tool at /tools/{tool_data['name']}](/tools/{tool_data['name']})"
+                
+                if user_id:
+                     await chat_service.add_message(user_id, chat_id, "assistant", response)
+                return response
+            # ---------------------------
+
             if status_callback:
                 await status_callback("log", f"Executing tool {tool_data['name']} with args: {args}")
             
-            from e2b_code_interpreter import Sandbox
+            # 4. Execute Service
             try:
-                with Sandbox.create() as sb:
-                    # 1. Install Dependencies
-                    deps = tool_data.get("dependencies", [])
-                    if deps:
-                        if status_callback:
-                            await status_callback("log", f"Installing dependencies: {deps}...")
-                        for dep in deps:
-                            sb.commands.run(f"pip install -q {dep}")
-
-                    code = tool_data["python_code"]
-                    args_json = json.dumps(args)
-                    
-                    # Robust execution wrapper:
-                    # 1. Inspect function signature
-                    # 2. Filter args to only match valid parameters
-                    # 3. Handle 'unexpected keyword argument' proactively
-                    wrapper = f"""
-import json
-import inspect
-{code}
-
-# Introspection to prevent 'unexpected keyword argument' errors
-sig = inspect.signature(run)
-valid_params = sig.parameters.keys()
-raw_args = json.loads('{args_json}')
-filtered_args = {{k: v for k, v in raw_args.items() if k in valid_params}}
-
-# Check for missing required arguments? 
-# (Simple pass for now, let Python raise TypeError if missing)
-
-print(json.dumps(run(**filtered_args)))
-"""
-                    res = sb.run_code(wrapper)
-                    if res.error:
-                        return f"Tool execution failed: {res.error.value}"
-                    
-                    # Split stdout to separate logs from final JSON result
-                    # The wrapper prints json.dumps(result) as the LAST line.
-                    stdout = res.logs.stdout
-                    
-                    if stdout is None:
-                        stdout = ""
-                    elif isinstance(stdout, list):
-                        # Should not happen in recent e2b versions but handled just in case
-                        stdout = "\n".join([str(line) for line in stdout])
-                    else:
-                        stdout = str(stdout)
-
-                    try:
-                        output_lines = stdout.strip().split('\n')
-                    except Exception as e:
-                         if status_callback:
-                             await status_callback("error", f"Error parsing output: {e}")
-                         output_lines = []
-                    
-                    if not output_lines or not output_lines[0].strip():
-                         return "Tool executed but returned no output."
-                        
-                    raw_result = output_lines[-1]
-                    
-                    # Log intermediate steps
-                    for log_line in output_lines[:-1]:
-                        if log_line.strip() and status_callback:
-                            await status_callback("log", f"Tool: {log_line}")
-
-                    # Check for explicit failure in result
-                    if "error" in raw_result.lower() and "{" not in raw_result:
-                         return f"Tool execution returned an error: {raw_result}"
-                    
-                    # Try to parse as JSON to check for visualization
-                    viz_payload = None
-                    try:
-                        result_json = json.loads(raw_result)
-                        if isinstance(result_json, dict) and "_visualization" in result_json:
-                            viz_data = result_json.pop("_visualization")
-                            viz_payload = {"type": "chart", "data": viz_data}
-                            if status_callback:
-                                await status_callback("ui_evt", viz_payload)
-                            
-                            # Update raw_result to be the cleaned data for the LLM
-                            raw_result = json.dumps(result_json)
-                    except json.JSONDecodeError:
-                        pass # Not JSON, treat as text string
-                            
-                    # POST-PROCESSING: Make it conversational
-                    explanation_prompt = f"""
-The user asked: "{message}"
-We ran a tool and got this result: {raw_result}
-
-Please answer the user's question using the result. Act as a Financial Advisor.
-
-**CRITICAL RULES**:
-1. **Evidence-Based**: You must CITE the specific headline or data point from the result that supports your claim.
-2. **No Fluff**: Do not use generic phrases like "market resilience" or "positive momentum" unless the data explicitly says so.
-3. **Honesty**: If the result is sparse (e.g. few headlines due to holiday), SAY SO. Do not invent activity.
-4. **No Hallucinations**: If the tool returned no data, state "I could not find relevant data".
-5. **No Fake Precision**: Round abstract sentiment scores to 2 decimal places (e.g. 0.09). Do not use 4+ decimals.
-"""
-                    final_response = await client.chat.completions.create(
-                        model=os.getenv("LLM_MODEL", "google/gemini-3-flash-preview"),
-                        messages=[{"role": "user", "content": explanation_prompt}]
-                    )
-                    final_response_content = final_response.choices[0].message.content
-                    if user_id: 
-                        await chat_service.add_message(user_id, chat_id, "assistant", final_response_content, component=viz_payload)
-                    return final_response_content
-            except Exception as e:
-                import traceback
-                tb = traceback.format_exc()
-                logger.error(f"Execution error traceback: {tb}")
+                from backend.services.tool_execution import execute_tool_logic
+                
                 if status_callback:
-                    await status_callback("error", f"Traceback: {tb}")
-                return f"Execution error: {e}"
+                    await status_callback("log", f"Executing tool {tool_data['name']} with args: {args}")
+
+                result = await execute_tool_logic(
+                    code=tool_data["python_code"],
+                    args=args,
+                    dependencies=tool_data.get("dependencies", []),
+                    status_callback=status_callback
+                )
+                
+                if result.get("error"):
+                    response_msg = f"Tool created, but execution failed: {result['error']}"
+                    if user_id: await chat_service.add_message(user_id, chat_id, "assistant", response_msg)
+                    return response_msg
+
+                # Check for chart
+                has_chart = result.get("visualization") is not None
+                
+                output_text = result.get("output", "")
+                if output_text is None: output_text = "No output returned."
+
+                # Use Interpreter Agent to format the result
+                interpreter_ctx = f"Here is the financial data from the tool '{tool_data.get('title', tool_data['name'])}' calculation: \nInput: {json.dumps(args)}\nOutput: {output_text}\n"
+                
+                if has_chart:
+                    interpreter_ctx += "\nA chart was also generated."
+
+                formatted_analysis = await self.interpreter_agent.process_message(interpreter_ctx, status_callback=status_callback)
+
+                # Construct Final Response
+                response = formatted_analysis
+                
+                if has_chart:
+                    response += "\n\n(A chart was generated. Click the tool link to view it interactively.)"
+
+                # Standardize link format for frontend parsing
+                response += f"\n\n[Open Tool at /tools/{tool_data['name']}](/tools/{tool_data['name']})"
+
+                if user_id: 
+                    # If we really want to support components, we need to update how add_message works or pass extra data.
+                    # For now, let's just save the text.
+                    await chat_service.add_message(user_id, chat_id, "assistant", response)
+                
+                return response
+
+            except Exception as e:
+                logger.error(f"Tool execution failed: {e}")
+                err_msg = f"Tool created, but execution failed: {str(e)}"
+                if user_id: await chat_service.add_message(user_id, chat_id, "assistant", err_msg)
+                return err_msg
+
             
-        return "I'm not sure how to help with that."
+            # Fallback / General Chat / Analysis Request
+            return await self._handle_analysis_request(message, user_id, chat_id, status_callback)
+
 
 manager_agent = ManagerAgent()

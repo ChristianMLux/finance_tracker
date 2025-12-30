@@ -4,6 +4,11 @@ import logging
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
+from dotenv import load_dotenv
+
+load_dotenv(".env.local") 
+load_dotenv() 
+
 from .database import engine, Base, get_db
 from .auth import get_current_user # Initialize Firebase Admin EARLY
 from . import models, schemas, crud, agents
@@ -75,12 +80,57 @@ async def read_expenses(skip: int = 0, limit: int = 100, db: AsyncSession = Depe
 async def read_tools(db: AsyncSession = Depends(get_db)):
     return await crud.get_all_tools(db)
 
+@app.get("/tools/{name}", response_model=schemas.Tool)
+async def read_tool(name: str, db: AsyncSession = Depends(get_db)):
+    tool = await crud.get_tool_by_name(db, name)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    return tool
+
+@app.post("/tools/{name}/save", response_model=schemas.Tool)
+async def save_tool(name: str, db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    tool = await crud.get_tool_by_name(db, name)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    
+    # Update status to saved/public
+    tool.status = "saved"
+    await db.commit()
+    await db.refresh(tool)
+    return tool
+
+
 import asyncio
 import json
 from fastapi.responses import StreamingResponse
 
+
+from backend.services.tool_execution import execute_tool_logic
+
+@app.post("/tools/{name}/execute")
+async def execute_tool_endpoint(name: str, request: schemas.ToolExecutionRequest, db: AsyncSession = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    tool = await crud.get_tool_by_name(db, name)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+        
+    dependencies = []
+    if tool.dependencies:
+        try:
+            dependencies = json.loads(tool.dependencies)
+        except:
+            dependencies = []
+
+    result = await execute_tool_logic(tool.python_code, request.args, dependencies)
+    
+    if result["error"]:
+         raise HTTPException(status_code=500, detail=result["error"])
+         
+    return result
+
+# Chat Endpoint
 @app.post("/chat")
 async def chat(message: str, chat_id: str = "default", current_user: models.User = Depends(get_current_user)):
+
     queue = asyncio.Queue()
     
     async def callback(log_type, content):

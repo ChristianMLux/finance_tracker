@@ -47,6 +47,8 @@ class ToolBase(BaseModel):
     json_schema: Optional[str] = None
     dependencies: Optional[str] = "[]"
     is_active: Optional[int] = 1
+    status: Optional[str] = "temporary"
+    creator_id: Optional[str] = None
 
 class ToolCreate(ToolBase):
     pass
@@ -55,3 +57,7 @@ class Tool(ToolBase):
     id: int
     
     model_config = ConfigDict(from_attributes=True)
+
+class ToolExecutionRequest(BaseModel):
+    args: dict
+

@@ -7,8 +7,12 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from e2b_code_interpreter import Sandbox
 
-from backend.database import get_db, AsyncSessionLocal
-from backend import crud
+from backend.database import get_db, AsyncSessionLocal, engine
+from backend import crud, models
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
 
 # Config
 SERVER_NAME = "FinanceFoundry"
@@ -116,6 +120,10 @@ if __name__ == "__main__":
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        # Ensure database tables exist (fix for local dev race condition)
+        loop.run_until_complete(init_db())
+        
         loop.run_until_complete(register_tools_from_db())
     except Exception as e:
         logger.error(f"Failed to register tools on startup: {e}")

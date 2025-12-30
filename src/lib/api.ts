@@ -22,6 +22,10 @@ export interface Tool {
   title: string | null;
   description: string;
   is_active: number;
+  status?: string;
+  json_schema?: string;    
+  python_code?: string;
+  dependencies?: string;
 }
 
 export const api = {

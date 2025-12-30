@@ -11,15 +11,13 @@ class ChatService:
 
     def __init__(self):
         try:
-            project_id = os.getenv("NEXT_PUBLIC_FIREBASE_PROJECT_ID")
-            if project_id:
-                self.db = firestore.client(project=project_id)
-            else:
-                self.db = firestore.client()
-            logger.info(f"Firestore initialized (Project: {project_id or 'default'})")
+            # App is initialized in auth.py which is imported before agents/manager
+            self.db = firestore.client()
+            logger.info(f"Firestore initialized.")
         except Exception as e:
             logger.error(f"Error initializing Firestore client: {e}")
             self.db = None
+
 
     async def add_message(self, user_id: str, chat_id: str, role: str, content: str, component: Optional[Dict] = None):
         """
