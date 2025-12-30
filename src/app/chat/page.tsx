@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChatInterface } from "@/components/ChatInterface";
 
-export default function ChatPage() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const message = searchParams.get("message");
   const initialInput = message ? decodeURIComponent(message) : undefined;
@@ -14,5 +15,13 @@ export default function ChatPage() {
          <ChatInterface initialInput={initialInput} />
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading chat...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }
