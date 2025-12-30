@@ -4,10 +4,11 @@ import { DynamicToolRunner } from "@/components/tools/DynamicToolRunner"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
+import { API_URL } from "@/lib/api"
 
 async function getTool(name: string) {
   try {
-      const res = await fetch(`http://127.0.0.1:8000/tools/${name}`, { cache: 'no-store' })
+      const res = await fetch(`${API_URL}/tools/${name}`, { cache: 'no-store' })
       if (!res.ok) return undefined
       return res.json()
   } catch (error) {
